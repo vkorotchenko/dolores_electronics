@@ -17,7 +17,6 @@ boolean isMetric = true;
 
 // declare GPS
 NeoSWSerial gpsSerial(GPS_TX, GPS_RX);
-// SoftwareSerial gpsSerial(GPS_TX, GPS_RX);
 NMEAGPS gps;
 
 
@@ -43,8 +42,6 @@ void loop()
 {
   while (gps.available( gpsSerial ))
   {
-
-    //  A new fix has been assembled from processed chars
     gps_fix fix = gps.read();
 
     if (fix.latitude() < 49 && isMetric) {
@@ -53,10 +50,8 @@ void loop()
       setKph();
     }
 
-    //  Display fix speed (the speed may not be valid yet)
     if (fix.valid.speed) {
 
-      // Here is a way to get the whole number MPH
       int speed;
       if (isMetric) {
         speed = (int)fix.speed_kph();
