@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <TM1637Display.h>
-#include <SoftwareSerial.h>
 #include <NMEAGPS.h>
+#include <NeoSWSerial.h>
 
 // Module connection pins (Digital Pins)
 #define CLK 2
@@ -10,11 +10,14 @@
 #define GPS_RX 7
 
 // CONSTANTS
+#define MIN_SPEED 5
+
+// VARIABLES
 boolean isMetric = true;
-uint8_t data[] = { 0xff, 0xff, 0xff, 0xff };
 
 // declare GPS
-SoftwareSerial gpsSerial(GPS_TX, GPS_RX);
+NeoSWSerial gpsSerial(GPS_TX, GPS_RX);
+// SoftwareSerial gpsSerial(GPS_TX, GPS_RX);
 NMEAGPS gps;
 
 
@@ -29,12 +32,11 @@ void setup()
 
   //init serial
   Serial.begin(115200);
-  Serial.println( F("Clock starting!") ); // F macro saves RAM!
 
   // initialize GPS
   gpsSerial.begin(9600);
-  gps.send_P( &gpsSerial, F("PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0") ); // RMC only
-  gps.send_P( &gpsSerial, F("PMTK220,1000") ); // 1Hz update
+  gps.send_P( &gpsSerial, F("PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0") ); // RMC(Recomended minim specific) only
+  gps.send_P( &gpsSerial, F("PMTK220,1000") ); // 4Hz update
 }
 
 void loop()
@@ -45,8 +47,11 @@ void loop()
     //  A new fix has been assembled from processed chars
     gps_fix fix = gps.read();
 
-    //  Display fix status (the status may not be valid yet)
-    Serial.println( "GPS RECEIVED");
+    if (fix.latitude() < 49 && isMetric) {
+      setMph();
+    } else if (fix.latitude() >= 49 && !isMetric) {
+      setKph();
+    }
 
     //  Display fix speed (the speed may not be valid yet)
     if (fix.valid.speed) {
@@ -59,14 +64,13 @@ void loop()
         speed = (int)fix.speed_mph();
       }
 
-      Serial.print("speed: ");
-      Serial.println(speed);
-      setSpeed(speed);
+      if (speed > MIN_SPEED) {
+        setSpeed(speed);
+      } else {
+        setSpeed(0);
+      }
 
-    } else {
-      Serial.print("invalid speed");
-    }
-    Serial.println();
+    } 
   }
 }
 
@@ -77,11 +81,11 @@ void setSpeed(int speed) {
 void setKph() {
   uint8_t kph[] = { 0x00, 0x00, 0x00, SEG_A };
   display.setSegments(kph);
-
+  isMetric = true;
 }
 
 void setMph() {
   uint8_t kph[] = { 0x00, 0x00, 0x00, SEG_D };
   display.setSegments(kph);
-
+  isMetric = false;
 }
