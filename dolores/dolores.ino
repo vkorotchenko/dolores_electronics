@@ -9,22 +9,25 @@
 #define GPS_TX 8
 #define GPS_RX 7
 
+boolean isMetric = true;
+uint8_t data[] = { 0xff, 0xff, 0xff, 0xff };
+
+// declare GPS
 SoftwareSerial gpsSerial(GPS_TX, GPS_RX);
 NMEAGPS gps;
 
 
-uint8_t data[] = { 0xff, 0xff, 0xff, 0xff };
 
 TM1637Display display(CLK, DIO);
 void setup()
 {  
   display.setBrightness(0x09);
-  setMph();
+  setKph();
   
   Serial.begin(115200);
   Serial.println( F("Clock starting!") ); // F macro saves RAM!
 
-
+// initialize GPS
   gpsSerial.begin(9600);
   gps.send_P( &gpsSerial, F("PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0") ); // RMC only
   gps.send_P( &gpsSerial, F("PMTK220,1000") ); // 1Hz update
@@ -45,25 +48,26 @@ while (gps.available( gpsSerial ))
     if (fix.valid.speed) {
 
       // Here is a way to get the whole number MPH
-      int speed_mph = (fix.spd.whole * 115) / 100;
+      int speed;
+      if (isMetric) {
+        speed = (int)fix.speed_kph();
+      } else {
+        speed = (int)fix.speed_mph();
+      }
+
 
       // You could get the floating point (with decimals) MPH like this:
       //float speed_mph = fix.speed_mph();
       //speed_mph = random( 0, 100 ); // uncomment for testing
       Serial.print("speed: ");
-      Serial.println(speed_mph);
-      setSpeed(speed_mph);
+      Serial.println(speed);
+      setSpeed(speed);
 
     } else {
       Serial.print("invalid speed");
     }
     Serial.println();
   }
-
-  
-// int speed = random( 0, 999 );
-//setSpeed(speed);
-//delay(1000);
 }
 
 void setSpeed(int speed) {
