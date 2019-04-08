@@ -3,6 +3,7 @@
 #include <NMEAGPS.h>
 #include <NeoSWSerial.h>
 #include <Bounce2.h>
+#include <EEPROM.h>
 
 // Module connection pins (Digital Pins)
 #define CLK 2
@@ -15,15 +16,35 @@
 #define LEFT_TURN_RELAY 9
 #define HEAD_LIGHT_IN 10
 #define HEAD_LIFGHT_RELAY 11
-#define STARTER_IN 12
+#define AUX_IN 12
 #define STARTER_RELAY 13
-#define HORN_IN A0
-#define HORN_RELAY A1
+#define HORN_RELAY 13
+
+#define OIL_SENSOR A0
+#define VOLT_SENSOR A1
+
+//SEGMENTS
+const uint8_t SEG_OIL[] = {
+	SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,   // O
+	SEG_E | SEG_F,                                   // I
+	SEG_E | SEG_F | SEG_D,                           // L
+	0x00                                             //
+};
 
 // CONSTANTS
 #define MIN_SPEED 5
 #define DEBOUNCE_DELAY 50
 #define TURN_SIGNAL_BLINK_DELAY 500
+#define VOLTAGE_THRESHOLD 12.8
+#define RUNNING_DISTANCE_THRESHOLD 1.00f
+#define EE_ADDRESS 0
+
+
+// VOLTAGE SENSOR VALUES
+float vOUT = 0.0;
+float vIN = 0.0;
+float R1 = 30000.0;
+float R2 = 7500.0;
 
 
 // VARIABLES
@@ -39,11 +60,13 @@ Bounce debouncerRightTurn = Bounce();
 Bounce debouncerLeftTurn = Bounce();
 Bounce debouncerHeadlight = Bounce();
 
-
-
 // declare GPS
 NeoSWSerial gpsSerial(GPS_TX, GPS_RX);
 NMEAGPS gps;
+
+NeoGPS::Location_t prev_location;
+bool firstScan = true;
+float runningDistance = 0;
 
 
 // declate LED Display
@@ -68,8 +91,9 @@ void setup()
   pinMode(RIGHT_TURN_IN, INPUT);
   pinMode(LEFT_TURN_IN, INPUT);
   pinMode(HEAD_LIGHT_IN, INPUT);
-  pinMode(STARTER_IN, INPUT);
-  pinMode(HORN_IN, INPUT);
+  pinMode(AUX_IN, INPUT);
+  pinMode(OIL_SENSOR, INPUT);
+  pinMode(VOLT_SENSOR, INPUT);
 
   //init bounce
   debouncerRightTurn.attach( RIGHT_TURN_IN );
@@ -84,8 +108,7 @@ void setup()
   pinMode(RIGHT_TURN_RELAY, OUTPUT);
   pinMode(LEFT_TURN_RELAY, OUTPUT);
   pinMode(HEAD_LIFGHT_RELAY, OUTPUT);
-  pinMode(STARTER_RELAY, OUTPUT);
-  pinMode(HORN_RELAY, OUTPUT);
+  pinMode(AUX_RELAY, OUTPUT);
 
 }
 
@@ -116,6 +139,18 @@ void loop()
         setSpeed(0);
       }
     }
+
+    if (fix.valid.location) {
+      if (firstScan) {
+         firstScan = false;
+         prev_location = fix.location;
+       } else {
+         float range = fix.location.DistanceKm (prev_location);
+         runningDistance = runningDistance + range;
+         if (runningDistance > RUNNING_DISTANCE_THRESHOLD) {
+           persistRange(range);
+       }
+
   }
 
   debouncerRightTurn.update ( );
@@ -144,6 +179,35 @@ void loop()
   if (debouncerHeadlight.read() == HIGH) {
     isHeadlightOn = !isHeadlightOn;
   }
+
+  //AUX Button
+  if (isMotorcycleRunning()) {
+    //CHECK OIL
+    if( digitalRead(OIL_SENSOR) == HIGH) {
+      display.setSegments(SEG_OIL)
+      continue;
+    }
+    digitalWrite(HORN_RELAY, digitalRead(AUX_IN));
+  } else {
+    digitalWrite(STARTER_RELAY, digitalRead(AUX_IN));
+  }
+
+}
+
+void persistRange(float range) {
+  //TODO check if value is valid (case for first time)
+  float odometer = 0.00f;
+  EEPROM.get( EE_ADDRESS, odometer);
+  odometer = odometer + range;
+  EEPROM.update( EE_ADDRESS, odometer);
+}
+
+boolean isMotorcycleRunning() {
+  value = analogRead(VOLT_SENSOR);
+  vOUT = (value * 5.0) / 1024.0;
+  vIN = vOUT / (R2/(R1+R2));
+  return vIn > VOLTAGE_THRESHOLD;
+  // TODO keep track for a couple of seconds before switching to true;
 }
 
 void blinkTurnSignal(bool isOn, int pin) {
