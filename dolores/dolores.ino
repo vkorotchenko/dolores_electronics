@@ -25,10 +25,10 @@
 
 //SEGMENTS
 const uint8_t SEG_OIL[] = {
-	SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,   // O
-	SEG_E | SEG_F,                                   // I
-	SEG_E | SEG_F | SEG_D,                           // L
-	0x00                                             //
+  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,   // O
+  SEG_E | SEG_F,                                   // I
+  SEG_E | SEG_F | SEG_D,                           // L
+  0x00                                             //
 };
 
 // CONSTANTS
@@ -158,16 +158,16 @@ void loop()
 
     if (fix.valid.location) {
       if (firstLocationScan) {
-         firstLocationScan = false;
-         prev_location = fix.location;
-       } else {
-         float range = fix.location.DistanceKm (prev_location);
-         runningDistance = runningDistance + range;
-         if (runningDistance > RUNNING_DISTANCE_THRESHOLD) {
-           persistRange(range);
-           runningDistance = 0;
-         }
-       }
+        firstLocationScan = false;
+        prev_location = fix.location;
+      } else {
+        float range = fix.location.DistanceKm (prev_location);
+        runningDistance = runningDistance + range;
+        if (runningDistance > RUNNING_DISTANCE_THRESHOLD) {
+          persistRange(range);
+          runningDistance = 0;
+        }
+      }
     }
   }
 
@@ -198,15 +198,16 @@ void loop()
     isHeadlightOn = !isHeadlightOn;
   }
 
-  //AUX Button
   if (isMotorcycleRunning()) {
     //CHECK OIL
-    if( digitalRead(OIL_SENSOR) == HIGH) {
+    if ( digitalRead(OIL_SENSOR) == HIGH) {
       display.setSegments(SEG_OIL);
       //continue;
     }
+      //AUX Button
     digitalWrite(HORN_RELAY, digitalRead(AUX_IN));
-  } else {
+  } else { 
+    //AUX Button
     digitalWrite(STARTER_RELAY, digitalRead(AUX_IN));
   }
 
@@ -220,44 +221,43 @@ void persistRange(float range) {
 }
 
 void scrollOdometer() {
-    float value;
-    EEPROM.get(EE_ODOMETER_ADDRESS, value);
-    int odometer = (int) value;
+  float value;
+  EEPROM.get(EE_ODOMETER_ADDRESS, value);
+  int odometer = (int) value;
 
-    int digits = ((int) pow(odometer , 0.1)) + 1;
+  int digits = ((int) pow(odometer , 0.1)) + 1;
 
-    for (int i = 0; i < digits ; i++) {
-      int display_value = getDisplayValue(digits, i, odometer);
-      display.showNumberDec(display_value, i > 3, 4, 0);
-      delay(SCROLL_SPEED);
-    }
-      delay(SCROLL_SPEED);
+  for (int i = 0; i < digits ; i++) {
+    int display_value = getDisplayValue(digits, i, odometer);
+    display.showNumberDec(display_value, i > 3, 4, 0);
+    delay(SCROLL_SPEED);
+  }
+  delay(SCROLL_SPEED);
 }
 
-int getDisplayValue(int digits, int offset ,int reading) {
-    int x0 = extractDigit(reading, digits-offset);
-    int x1 = extractDigit(reading, digits-offset + 1);
-    int x2 = extractDigit(reading, digits-offset + 2);
-    int x3 = extractDigit(reading, digits-offset + 3);
+int getDisplayValue(int digits, int offset , int reading) {
+  int x0 = extractDigit(reading, digits - offset);
+  int x1 = extractDigit(reading, digits - offset + 1);
+  int x2 = extractDigit(reading, digits - offset + 2);
+  int x3 = extractDigit(reading, digits - offset + 3);
 
-    return (x3 * 1000) + (x2 * 100) + (x1 * 10) + x0;
+  return (x3 * 1000) + (x2 * 100) + (x1 * 10) + x0;
 }
 
-int extractDigit(int v, int p){
-  return int(v/(pow(10,p-1))) - int(v/(pow(10,p)))*10;
+int extractDigit(int v, int p) {
+  return int(v / (pow(10, p - 1))) - int(v / (pow(10, p))) * 10;
 }
 
 boolean isMotorcycleRunning() {
   int value = analogRead(VOLT_SENSOR);
   float vOUT = (value * 5.0) / 1024.0;
-  float vIN = vOUT / (R2/(R1+R2));
-  if( vIN > VOLTAGE_THRESHOLD) {
-    if(millisWhenStarted = 0) {
-       millisWhenStarted = millis();
-       return false;
-    }
-    else if(millisWhenStarted < millis() - TIME_SINCE_STARTED_THRESHOLD) {
-        return false;
+  float vIN = vOUT / (R2 / (R1 + R2));
+  if ( vIN > VOLTAGE_THRESHOLD) {
+    if (millisWhenStarted = 0) {
+      millisWhenStarted = millis();
+      return false;
+    } else if (millisWhenStarted < millis() - TIME_SINCE_STARTED_THRESHOLD) {
+      return false;
     } else {
       return true;
     }
@@ -298,7 +298,7 @@ void initEEPROM() {
   int check_value;
   EEPROM.get(EE_CHECK_ADDRESS, check_value);
 
-  if( check_value == 255){
+  if ( check_value == 255) {
     EEPROM.put(EE_ODOMETER_ADDRESS, 0);
     EEPROM.put(EE_METRIC_ADDRESS, isMetric);
     setKph();
