@@ -264,7 +264,7 @@ boolean isMotorcycleRunning() {
   int value = analogRead(VOLT_SENSOR);
   float vOUT = (value * 5.0) / 1024.0;
   float vIN = vOUT / (R2 / (R1 + R2));
-  
+
   if ( vIN > VOLTAGE_THRESHOLD) {
     if (millisWhenStarted = 0) {
       millisWhenStarted = millis();
