@@ -233,7 +233,7 @@ void scrollOdometer() {
   EEPROM.get(EE_ODOMETER_ADDRESS, value);
 
   if (!isMetric) {
-    value = value * 0.621371;
+    value = value / 1.609;
   }
 
   int odometer = (int) value;
