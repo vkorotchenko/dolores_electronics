@@ -41,7 +41,9 @@ const uint8_t SEG_OIL[] = {
 #define EE_CHECK_ADDRESS 99
 #define EE_METRIC_ADDRESS 77
 #define TIME_SINCE_STARTED_THRESHOLD 1000
-#define SCROLL_SPEED 400
+#define SCROLL_SPEED 500
+
+#define INIT_ODOMETER_READING_KM 0
 
 
 // VOLTAGE SENSOR VALUES
@@ -83,6 +85,12 @@ void setup()
 
   //INIT EEPROM
   initEEPROM();
+
+  if (isMetric) {
+    setKph();
+  } else {
+    setMph();
+  }
 
   //init serial
   Serial.begin(115200);
@@ -204,9 +212,9 @@ void loop()
       display.setSegments(SEG_OIL);
       //continue;
     }
-      //AUX Button
+    //AUX Button
     digitalWrite(HORN_RELAY, digitalRead(AUX_IN));
-  } else { 
+  } else {
     //AUX Button
     digitalWrite(STARTER_RELAY, digitalRead(AUX_IN));
   }
@@ -223,13 +231,18 @@ void persistRange(float range) {
 void scrollOdometer() {
   float value;
   EEPROM.get(EE_ODOMETER_ADDRESS, value);
+
+  if (!isMetric) {
+    value = value * 0.621371;
+  }
+
   int odometer = (int) value;
 
   int digits = ((int) pow(odometer , 0.1)) + 1;
 
   for (int i = 0; i < digits ; i++) {
     int display_value = getDisplayValue(digits, i, odometer);
-    display.showNumberDec(display_value, i > 3, 4, 0);
+    display.showNumberDec(display_value, i > 3, 3, 0);
     delay(SCROLL_SPEED);
   }
   delay(SCROLL_SPEED);
@@ -239,9 +252,8 @@ int getDisplayValue(int digits, int offset , int reading) {
   int x0 = extractDigit(reading, digits - offset);
   int x1 = extractDigit(reading, digits - offset + 1);
   int x2 = extractDigit(reading, digits - offset + 2);
-  int x3 = extractDigit(reading, digits - offset + 3);
 
-  return (x3 * 1000) + (x2 * 100) + (x1 * 10) + x0;
+  return  (x2 * 100) + (x1 * 10) + x0;
 }
 
 int extractDigit(int v, int p) {
@@ -252,6 +264,7 @@ boolean isMotorcycleRunning() {
   int value = analogRead(VOLT_SENSOR);
   float vOUT = (value * 5.0) / 1024.0;
   float vIN = vOUT / (R2 / (R1 + R2));
+  
   if ( vIN > VOLTAGE_THRESHOLD) {
     if (millisWhenStarted = 0) {
       millisWhenStarted = millis();
@@ -299,7 +312,7 @@ void initEEPROM() {
   EEPROM.get(EE_CHECK_ADDRESS, check_value);
 
   if ( check_value == 255) {
-    EEPROM.put(EE_ODOMETER_ADDRESS, 0);
+    EEPROM.put(EE_ODOMETER_ADDRESS, INIT_ODOMETER_READING_KM);
     EEPROM.put(EE_METRIC_ADDRESS, isMetric);
     setKph();
     EEPROM.put(EE_CHECK_ADDRESS, 0);
