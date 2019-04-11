@@ -102,11 +102,11 @@ void setup()
 
   // set pin modes
   // INPUT
-  pinMode(RIGHT_TURN_IN, INPUT);
-  pinMode(LEFT_TURN_IN, INPUT);
-  pinMode(HEAD_LIGHT_IN, INPUT);
-  pinMode(AUX_IN, INPUT);
-  pinMode(OIL_SENSOR, INPUT);
+  pinMode(RIGHT_TURN_IN, INPUT_PULLUP);
+  pinMode(LEFT_TURN_IN, INPUT_PULLUP);
+  pinMode(HEAD_LIGHT_IN, INPUT_PULLUP);
+  pinMode(AUX_IN, INPUT_PULLUP);
+  pinMode(OIL_SENSOR, INPUT_PULLUP);
   pinMode(VOLT_SENSOR, INPUT);
 
   //init bounce
