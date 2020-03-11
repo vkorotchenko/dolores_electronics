@@ -31,11 +31,39 @@ const uint8_t SEG_OIL[] = {
   0x00                                             //
 };
 
+const uint8_t SEG_TURN_RIGHT[] = {
+  0x00,
+  0x00,
+  0x00,
+  SEG_A | SEG_D | SEG_G 
+};
+
+const uint8_t SEG_TURN_LEFT[] = {
+  SEG_A | SEG_D | SEG_G,
+  0x00,
+  0x00,
+  0x00 
+};
+
+const uint8_t SEG_TURN_BOTH[] = {
+  SEG_A | SEG_D | SEG_G,
+  0x00,
+  0x00,
+  SEG_A | SEG_D | SEG_G
+};
+
+const uint8_t SEG_READY[] = {
+  SEG_G,
+  SEG_G,
+  SEG_G,
+  SEG_G
+};
+
 // CONSTANTS
 #define MIN_SPEED 5
 #define DEBOUNCE_DELAY 50
 #define TURN_SIGNAL_BLINK_DELAY 500
-#define VOLTAGE_THRESHOLD 12.8
+#define VOLTAGE_THRESHOLD 13.5
 #define RUNNING_DISTANCE_THRESHOLD 1.00f
 #define EE_ODOMETER_ADDRESS 0
 #define EE_CHECK_ADDRESS 99
@@ -53,7 +81,7 @@ float R2 = 7500.0;
 
 // VARIABLES
 bool isMetric = true;
-bool enableBothTurnSignals = false;
+bool enableBothTurnSignals = true;
 
 bool isLeftTurnOn = false;
 bool isRightTurnOn = false;
@@ -61,10 +89,16 @@ bool isHeadlightOn = false;
 
 long millisWhenStarted = 0;
 
+// display variables
+int displaySpeed = 0;
+bool isOil = false;
+bool isRunning = false;
+
 //decleare Bounce
 Bounce debouncerRightTurn = Bounce();
 Bounce debouncerLeftTurn = Bounce();
 Bounce debouncerHeadlight = Bounce();
+Bounce debouncerAux = Bounce();
 
 // declare GPS
 NeoSWSerial gpsSerial(GPS_TX, GPS_RX);
@@ -116,6 +150,8 @@ void setup()
   debouncerLeftTurn.interval(DEBOUNCE_DELAY);
   debouncerHeadlight.attach( HEAD_LIGHT_IN );
   debouncerHeadlight.interval(DEBOUNCE_DELAY);
+  debouncerAux.attach(AUX_IN);
+  debouncerAux.interval(DEBOUNCE_DELAY);
 
 
   //OUTPUT
@@ -157,14 +193,14 @@ void loop()
         speed = (int)fix.speed_mph();
       }
 
-      if (speed > MIN_SPEED) {
-        setSpeed(speed);
-      } else {
-        setSpeed(0);
-      }
+      displaySpeed = speed;
+      if (speed < MIN_SPEED) {
+        displaySpeed = 0;
+      } 
     }
 
-    if (fix.valid.location) {
+    // record distance if location available and traveling more than min speed
+    if (fix.valid.location && displaySpeed >= MIN_SPEED) {
       if (firstLocationScan) {
         firstLocationScan = false;
         prev_location = fix.location;
@@ -182,15 +218,17 @@ void loop()
   debouncerRightTurn.update();
   debouncerLeftTurn.update();
   debouncerHeadlight.update();
+  debouncerAux.update();
 
   //read left turn
   if (debouncerLeftTurn.read() == HIGH) {
-    isLeftTurnOn = !isLeftTurnOn;
+    isLeftTurnOn = true;
     if (isLeftTurnOn && !enableBothTurnSignals) {
       isRightTurnOn = false;
     }
+  } else {
+    isRightTurnOn = false;
   }
-  blinkTurnSignal(isLeftTurnOn, LEFT_TURN_RELAY);
 
   //read right turn
   if (debouncerRightTurn.read() == HIGH) {
@@ -198,26 +236,30 @@ void loop()
     if (isRightTurnOn && !enableBothTurnSignals) {
       isLeftTurnOn = false;
     }
-  }
-  blinkTurnSignal(isRightTurnOn, RIGHT_TURN_RELAY );
-
-  // read headlight
-  if (debouncerHeadlight.read() == HIGH) {
-    isHeadlightOn = !isHeadlightOn;
+  } else {
+    isLeftTurnOn = false;
   }
 
-  if (isMotorcycleRunning()) {
-    //CHECK OIL
-    if ( digitalRead(OIL_SENSOR) == HIGH) {
-      display.setSegments(SEG_OIL);
-      //continue;
-    }
+  //check oil sensor
+  isOil =  (digitalRead(OIL_SENSOR) == HIGH);
+
+  // check if running 
+  isRunning = isMotorcycleRunning();
+
+  
+  // set outputs
+  if (isRunning) {
     //AUX Button
-    digitalWrite(HORN_RELAY, digitalRead(AUX_IN));
+    digitalWrite(HORN_RELAY, debouncerAux.read());
   } else {
     //AUX Button
-    digitalWrite(STARTER_RELAY, digitalRead(AUX_IN));
+    digitalWrite(STARTER_RELAY, debouncerAux.read());
   }
+
+  blinkTurnSignal(isLeftTurnOn, LEFT_TURN_RELAY);
+  blinkTurnSignal(isRightTurnOn, RIGHT_TURN_RELAY );
+  digitalWrite(HORN_RELAY, (debouncerHeadlight.read() == HIGH));
+  setDisplay();
 
 }
 
@@ -281,13 +323,45 @@ boolean isMotorcycleRunning() {
 
 void blinkTurnSignal(bool isOn, int pin) {
   if (isOn) {
-    if ((millis() % (2 * TURN_SIGNAL_BLINK_DELAY)) < TURN_SIGNAL_BLINK_DELAY) {
+    if (isTimeForBlink()) {
       digitalWrite(pin, HIGH);
     } else {
       digitalWrite(pin, LOW);
     }
+  } else {
+    digitalWrite(pin, LOW);
   }
 }
+
+bool isTimeForBlink() {
+  return (millis() % (2 * TURN_SIGNAL_BLINK_DELAY)) < TURN_SIGNAL_BLINK_DELAY;
+}
+
+void setDisplay() {
+  if (isOil) {
+    display.setSegments(SEG_OIL);
+    return;
+  }
+  
+  if(isRunning) {
+    if ((isLeftTurnOn || isRightTurnOn) && isTimeForBlink()) {
+      if (isLeftTurnOn && isRightTurnOn) {
+        display.setSegments(SEG_TURN_BOTH);
+      } else if (isLeftTurnOn) {
+        display.setSegments(SEG_TURN_LEFT);
+      } else if (isRightTurnOn) {
+        display.setSegments(SEG_TURN_RIGHT);
+      } else {
+        setSpeed(displaySpeed);
+      }
+    } else {
+      setSpeed(displaySpeed);
+    }
+  } else {
+    display.setSegments(SEG_READY);
+  }
+}
+
 
 void setSpeed(int speed) {
   display.showNumberDec(speed, true, 3, 0);
