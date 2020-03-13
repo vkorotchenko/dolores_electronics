@@ -82,6 +82,7 @@ float R2 = 7500.0;
 // VARIABLES
 bool isMetric = true;
 bool enableBothTurnSignals = true;
+bool voltSensorBypass = true;
 
 bool isLeftTurnOn = false;
 bool isRightTurnOn = false;
@@ -303,21 +304,25 @@ int extractDigit(int v, int p) {
 }
 
 boolean isMotorcycleRunning() {
-  int value = analogRead(VOLT_SENSOR);
-  float vOUT = (value * 5.0) / 1024.0;
-  float vIN = vOUT / (R2 / (R1 + R2));
-
-  if ( vIN > VOLTAGE_THRESHOLD) {
-    if (millisWhenStarted = 0) {
-      millisWhenStarted = millis();
-      return false;
-    } else if (millisWhenStarted < millis() - TIME_SINCE_STARTED_THRESHOLD) {
-      return false;
-    } else {
-      return true;
-    }
+  if (voltSensorBypass) {
+    return digitalRead(VOLT_SENSOR) == HIGH;
   } else {
-    return false;
+    int value = analogRead(VOLT_SENSOR);
+    float vOUT = (value * 5.0) / 1024.0;
+    float vIN = vOUT / (R2 / (R1 + R2));
+  
+    if ( vIN > VOLTAGE_THRESHOLD) {
+      if (millisWhenStarted = 0) {
+        millisWhenStarted = millis();
+        return false;
+      } else if (millisWhenStarted < millis() - TIME_SINCE_STARTED_THRESHOLD) {
+        return false;
+      } else {
+        return true;
+      }
+    } else {
+      return false;
+    }
   }
 }
 
