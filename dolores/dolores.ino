@@ -11,14 +11,14 @@
 #define GPS_TX 8
 #define GPS_RX 7
 #define RIGHT_TURN_IN 4
-#define RIGHT_TURN_RELAY 5
+#define RIGHT_TURN_RELAY 13
 #define LEFT_TURN_IN 6
 #define LEFT_TURN_RELAY 9
 #define HEAD_LIGHT_IN 10
-#define HEAD_LIFGHT_RELAY 11
+#define HEAD_LIGHT_RELAY A2
 #define AUX_IN 12
-#define STARTER_RELAY 13
-#define HORN_RELAY 13
+#define STARTER_RELAY 11
+#define HORN_RELAY 5
 
 #define OIL_SENSOR A0
 #define VOLT_SENSOR A1
@@ -62,14 +62,14 @@ const uint8_t SEG_READY[] = {
 // CONSTANTS
 #define MIN_SPEED 5
 #define DEBOUNCE_DELAY 50
-#define TURN_SIGNAL_BLINK_DELAY 500
+#define TURN_SIGNAL_BLINK_DELAY 800
 #define VOLTAGE_THRESHOLD 13.5
 #define RUNNING_DISTANCE_THRESHOLD 1.00f
 #define EE_ODOMETER_ADDRESS 0
 #define EE_CHECK_ADDRESS 99
 #define EE_METRIC_ADDRESS 77
 #define TIME_SINCE_STARTED_THRESHOLD 1000
-#define SCROLL_SPEED 500
+#define SCROLL_SPEED 800
 
 #define INIT_ODOMETER_READING_KM 0
 
@@ -82,6 +82,7 @@ float R2 = 7500.0;
 // VARIABLES
 bool isMetric = true;
 bool enableBothTurnSignals = true;
+bool voltSensorBypass = true;
 
 bool isLeftTurnOn = false;
 bool isRightTurnOn = false;
@@ -144,11 +145,11 @@ void setup()
   pinMode(VOLT_SENSOR, INPUT);
 
   //init bounce
-  debouncerRightTurn.attach( RIGHT_TURN_IN );
+  debouncerRightTurn.attach(RIGHT_TURN_IN);
   debouncerRightTurn.interval(DEBOUNCE_DELAY);
-  debouncerLeftTurn.attach( LEFT_TURN_IN );
+  debouncerLeftTurn.attach(LEFT_TURN_IN);
   debouncerLeftTurn.interval(DEBOUNCE_DELAY);
-  debouncerHeadlight.attach( HEAD_LIGHT_IN );
+  debouncerHeadlight.attach(HEAD_LIGHT_IN);
   debouncerHeadlight.interval(DEBOUNCE_DELAY);
   debouncerAux.attach(AUX_IN);
   debouncerAux.interval(DEBOUNCE_DELAY);
@@ -157,7 +158,7 @@ void setup()
   //OUTPUT
   pinMode(RIGHT_TURN_RELAY, OUTPUT);
   pinMode(LEFT_TURN_RELAY, OUTPUT);
-  pinMode(HEAD_LIFGHT_RELAY, OUTPUT);
+  pinMode(HEAD_LIGHT_RELAY, OUTPUT);
   pinMode(STARTER_RELAY, OUTPUT);
   pinMode(HORN_RELAY, OUTPUT);
 
@@ -215,33 +216,37 @@ void loop()
     }
   }
 
-  debouncerRightTurn.update();
-  debouncerLeftTurn.update();
-  debouncerHeadlight.update();
-  debouncerAux.update();
+  bool rightChanged = debouncerRightTurn.update();
+  bool leftChanged = debouncerLeftTurn.update();
+  bool headChanged = debouncerHeadlight.update();
+  bool auxChanged = debouncerAux.update();
 
   //read left turn
-  if (debouncerLeftTurn.read() == HIGH) {
-    isLeftTurnOn = true;
-    if (isLeftTurnOn && !enableBothTurnSignals) {
-      isRightTurnOn = false;
+  if(leftChanged){
+    if ((debouncerLeftTurn.read() == LOW)) {
+      isLeftTurnOn = true;
+      if (isLeftTurnOn && !enableBothTurnSignals) {
+        isRightTurnOn = false;
+      }
+    } else {
+      isLeftTurnOn = false;
     }
-  } else {
-    isRightTurnOn = false;
   }
 
   //read right turn
-  if (debouncerRightTurn.read() == HIGH) {
-    isRightTurnOn = !isRightTurnOn;
-    if (isRightTurnOn && !enableBothTurnSignals) {
-      isLeftTurnOn = false;
+  if (rightChanged) {
+    if (debouncerRightTurn.read() == LOW) {
+      isRightTurnOn = true;
+      if (isRightTurnOn && !enableBothTurnSignals) {
+        isLeftTurnOn = false;
+      }
+    } else {
+      isRightTurnOn = false;
     }
-  } else {
-    isLeftTurnOn = false;
   }
 
   //check oil sensor
-  isOil =  (digitalRead(OIL_SENSOR) == HIGH);
+  isOil =  (digitalRead(OIL_SENSOR) == LOW);
 
   // check if running 
   isRunning = isMotorcycleRunning();
@@ -250,15 +255,17 @@ void loop()
   // set outputs
   if (isRunning) {
     //AUX Button
-    digitalWrite(HORN_RELAY, debouncerAux.read());
+    digitalWrite(HORN_RELAY, !debouncerAux.read());
+    digitalWrite(STARTER_RELAY,LOW);
   } else {
     //AUX Button
-    digitalWrite(STARTER_RELAY, debouncerAux.read());
+    digitalWrite(STARTER_RELAY, !debouncerAux.read());
+    digitalWrite(HORN_RELAY, LOW);
   }
 
   blinkTurnSignal(isLeftTurnOn, LEFT_TURN_RELAY);
-  blinkTurnSignal(isRightTurnOn, RIGHT_TURN_RELAY );
-  digitalWrite(HORN_RELAY, (debouncerHeadlight.read() == HIGH));
+  blinkTurnSignal(isRightTurnOn, RIGHT_TURN_RELAY);
+  digitalWrite(HEAD_LIGHT_RELAY, !debouncerHeadlight.read());
   setDisplay();
 
 }
@@ -303,21 +310,25 @@ int extractDigit(int v, int p) {
 }
 
 boolean isMotorcycleRunning() {
-  int value = analogRead(VOLT_SENSOR);
-  float vOUT = (value * 5.0) / 1024.0;
-  float vIN = vOUT / (R2 / (R1 + R2));
-
-  if ( vIN > VOLTAGE_THRESHOLD) {
-    if (millisWhenStarted = 0) {
-      millisWhenStarted = millis();
-      return false;
-    } else if (millisWhenStarted < millis() - TIME_SINCE_STARTED_THRESHOLD) {
-      return false;
-    } else {
-      return true;
-    }
+  if (voltSensorBypass) {
+    return digitalRead(VOLT_SENSOR) == HIGH;
   } else {
-    return false;
+    int value = analogRead(VOLT_SENSOR);
+    float vOUT = (value * 5.0) / 1024.0;
+    float vIN = vOUT / (R2 / (R1 + R2));
+  
+    if ( vIN > VOLTAGE_THRESHOLD) {
+      if (millisWhenStarted = 0) {
+        millisWhenStarted = millis();
+        return false;
+      } else if (millisWhenStarted < millis() - TIME_SINCE_STARTED_THRESHOLD) {
+        return false;
+      } else {
+        return true;
+      }
+    } else {
+      return false;
+    }
   }
 }
 
