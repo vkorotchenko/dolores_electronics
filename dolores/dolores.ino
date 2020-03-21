@@ -7,25 +7,32 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
+#include <Fingerprint.h>
 
 
 // Module connection pins (Digital Pins)
+#define FINGERPRINT_SLA 0
+#define FINGERPRINT_SLK 1
 #define CLK 2
 #define DIO 3
-#define GPS_TX 8
-#define GPS_RX 7
-#define RIGHT_TURN_IN 4
-#define RIGHT_TURN_RELAY 13
-#define LEFT_TURN_IN 6
-#define LEFT_TURN_RELAY 9
-#define HEAD_LIGHT_IN 10
-#define HEAD_LIGHT_RELAY A2
-#define AUX_IN 12
-#define STARTER_RELAY 11
-#define HORN_RELAY 5
+#define GPS_TX A5
+#define GPS_RX A4
 
-#define OIL_SENSOR A0
-#define VOLT_SENSOR A1
+#define RIGHT_TURN_IN 10
+#define LEFT_TURN_IN 11
+#define HEAD_LIGHT_IN 12
+#define AUX_IN 13
+
+#define OIL_SENSOR 8
+#define VOLT_SENSOR 9
+
+#define FINGERPRINT_RELAY A3
+#define HORN_RELAY A2
+#define RIGHT_TURN_RELAY 4
+#define LEFT_TURN_RELAY 5
+#define HEAD_LIGHT_RELAY 6
+#define STARTER_RELAY 7
+
 
 //SEGMENTS
 const uint8_t SEG_OIL[] = {
@@ -82,6 +89,10 @@ const uint8_t SEG_READY[] = {
 float R1 = 30000.0;
 float R2 = 7500.0;
 
+//fingerprint
+
+Fingerprint finger = Fingerprint(&Serial);
+bool loggedIn = false;
 
 // VARIABLES
 bool isMetric = true;
@@ -123,7 +134,7 @@ void setup()
 {
   //init serial
   Serial.begin(115200);
-  
+
   // Display settings
   if (alphaNumeric) {
     alpha4.begin(0x70);  // pass in the address
@@ -139,6 +150,10 @@ void setup()
   } else {
     setMph();
   }
+
+  //fingerprint
+  pinMode(FINGERPRINT_RELAY, OUTPUT);
+  finger.begin(57600);
 
 
   // initialize GPS
@@ -186,6 +201,16 @@ void setup()
 
 void loop()
 {
+  while (!loggedIn) {
+    int id = getFingerprintIDez();
+    if (id > 0 && id < 11) {
+      digitalWrite(FINGERPRINT_RELAY, HIGH);
+      loggedIn = true;
+
+      // TODO SCROLL "WELCOME VADIM"
+    }
+  }
+
   // read GPS if available
   while (gps.available( gpsSerial ))
   {
@@ -291,9 +316,9 @@ void persistRange(float range) {
 void scrollOdometer() {
   float value;
   EEPROM.get(EE_ODOMETER_ADDRESS, value);
-  
-    Serial.println("ODO VALUE: ");
-    Serial.print(value);
+
+  Serial.println("ODO VALUE: ");
+  Serial.print(value);
 
   if (!isMetric) {
     value = value / 1.609;
@@ -304,7 +329,7 @@ void scrollOdometer() {
   int digits = ((int) pow(odometer , 0.1)) + 1;
 
   if (alphaNumeric) {
-    scrollAlphaNumericDisaplay (odometer);
+    scrollAlphaNumericDisaplay (String(odometer, DEC));
   } else {
     for (int i = 0; i < digits ; i++) {
       int display_value = getDisplayValue(digits, i, odometer);
@@ -403,69 +428,67 @@ void alphaNumericDisplay() {
     alpha4.writeDigitAscii(3, ' ');
 
   }
-else {
-  if (isRunning) {
-    if (isLeftTurnOn || isRightTurnOn) {
-      if (isTimeForBlink()) {
+  else {
+    if (isRunning) {
+      if (isLeftTurnOn || isRightTurnOn) {
+        if (isTimeForBlink()) {
 
-        if (isLeftTurnOn && isRightTurnOn) {
-          alpha4.writeDigitAscii(0, '<');
-          alpha4.writeDigitAscii(1, ' ');
-          alpha4.writeDigitAscii(2, ' ');
-          alpha4.writeDigitAscii(3, '>');
-        } else if (isLeftTurnOn) {
-          alpha4.writeDigitAscii(0, '<');
-          alpha4.writeDigitAscii(1, ' ');
-          alpha4.writeDigitAscii(2, ' ');
-          alpha4.writeDigitAscii(3, ' ');
-        } else if (isRightTurnOn) {
+          if (isLeftTurnOn && isRightTurnOn) {
+            alpha4.writeDigitAscii(0, '<');
+            alpha4.writeDigitAscii(1, ' ');
+            alpha4.writeDigitAscii(2, ' ');
+            alpha4.writeDigitAscii(3, '>');
+          } else if (isLeftTurnOn) {
+            alpha4.writeDigitAscii(0, '<');
+            alpha4.writeDigitAscii(1, ' ');
+            alpha4.writeDigitAscii(2, ' ');
+            alpha4.writeDigitAscii(3, ' ');
+          } else if (isRightTurnOn) {
+            alpha4.writeDigitAscii(0, ' ');
+            alpha4.writeDigitAscii(1, ' ');
+            alpha4.writeDigitAscii(2, ' ');
+            alpha4.writeDigitAscii(3, '>');
+          }
+        } else {
           alpha4.writeDigitAscii(0, ' ');
           alpha4.writeDigitAscii(1, ' ');
           alpha4.writeDigitAscii(2, ' ');
-          alpha4.writeDigitAscii(3, '>');
+          alpha4.writeDigitAscii(3, ' ');
+
         }
       } else {
-        alpha4.writeDigitAscii(0, ' ');
-        alpha4.writeDigitAscii(1, ' ');
-        alpha4.writeDigitAscii(2, ' ');
-        alpha4.writeDigitAscii(3, ' ');
-
+        char buf [4];
+        sprintf (buf, "%03i", displaySpeed);
+        alpha4.writeDigitAscii(0, buf[0]);
+        alpha4.writeDigitAscii(1, buf[1]);
+        alpha4.writeDigitAscii(2, buf[2]);
+        alpha4.writeDigitAscii(3, isMetric ? 'K' : 'M');
+        setSpeed(displaySpeed);
       }
     } else {
-
-      char buf [4];
-      sprintf (buf, "%03i", displaySpeed);
-      alpha4.writeDigitAscii(0, buf[0]);
-      alpha4.writeDigitAscii(1, buf[1]);
-      alpha4.writeDigitAscii(2, buf[2]);
-      alpha4.writeDigitAscii(3, isMetric ? 'K' : 'M');
-      setSpeed(displaySpeed);
+      alpha4.writeDigitAscii(0, '<');
+      alpha4.writeDigitAscii(1, '{');
+      alpha4.writeDigitAscii(2, '}');
+      alpha4.writeDigitAscii(3, '>');
     }
-  } else {
-    alpha4.writeDigitAscii(0, '<');
-    alpha4.writeDigitAscii(1, '{');
-    alpha4.writeDigitAscii(2, '}');
-    alpha4.writeDigitAscii(3, '>');
   }
-}
-
   alpha4.writeDisplay();
 }
 
-void scrollAlphaNumericDisaplay(float input) {
+void scrollAlphaNumericDisaplay(String input) {
   String result = String(input, DEC);
   int loc = result.indexOf('.');
-  result = result.substring(0,loc);
-  result = "ODO-"+ result + (isMetric ? "K":"M") + "    ";
-  
+  result = result.substring(0, loc);
+  result = "ODO-" + result + (isMetric ? "K" : "M") + "    ";
+
   char buf[result.length()];
   result.toCharArray(buf, result.length());
-  
-  char displaybuffer[4] = {' ', ' ', ' ', ' '};
-  
-  
 
-  for (int i = 0; i < result.length()-1 ; i++ ) {
+  char displaybuffer[4] = {' ', ' ', ' ', ' '};
+
+
+
+  for (int i = 0; i < result.length() - 1 ; i++ ) {
     char c = buf[i];
     displaybuffer[0] = displaybuffer[1];
     displaybuffer[1] = displaybuffer[2];
@@ -483,7 +506,7 @@ void scrollAlphaNumericDisaplay(float input) {
   }
   alpha4.clear();
   alpha4.writeDisplay();
-    delay(SCROLL_SPEED);
+  delay(SCROLL_SPEED);
 
 }
 
@@ -511,8 +534,8 @@ void initEEPROM() {
   int check_value;
   EEPROM.get(EE_CHECK_ADDRESS, check_value);
 
-    Serial.println("CHECK ADDRESS VAL: ");
-    Serial.print(check_value);
+  Serial.println("CHECK ADDRESS VAL: ");
+  Serial.print(check_value);
 
   if ( check_value == 0xFF) {
     Serial.println("INIT EEPROM");
@@ -524,15 +547,28 @@ void initEEPROM() {
     Serial.println("NO INIT EEPROM");
     EEPROM.get(EE_METRIC_ADDRESS, isMetric);
 
-    
-  int odo_val;
-  EEPROM.get(EE_ODOMETER_ADDRESS, odo_val);
+
+    int odo_val;
+    EEPROM.get(EE_ODOMETER_ADDRESS, odo_val);
     Serial.println("ODO VAL: ");
     Serial.print(odo_val);
-    
-  int m_val;
-  EEPROM.get(EE_METRIC_ADDRESS, m_val);
+
+    int m_val;
+    EEPROM.get(EE_METRIC_ADDRESS, m_val);
     Serial.println("M VAL: ");
     Serial.print(m_val);
   }
+}
+
+int getFingerprintIDez() {
+  uint8_t p = finger.getImage();
+  if (p != FINGERPRINT_OK)  return -1;
+
+  p = finger.image2Tz();
+  if (p != FINGERPRINT_OK)  return -1;
+
+  p = finger.fingerFastSearch();
+  if (p != FINGERPRINT_OK)  return -1;
+
+  return finger.fingerID;
 }
