@@ -4,6 +4,10 @@
 #include <NeoSWSerial.h>
 #include <Bounce2.h>
 #include <EEPROM.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include "Adafruit_LEDBackpack.h"
+
 
 // Module connection pins (Digital Pins)
 #define CLK 2
@@ -35,14 +39,14 @@ const uint8_t SEG_TURN_RIGHT[] = {
   0x00,
   0x00,
   0x00,
-  SEG_A | SEG_D | SEG_G 
+  SEG_A | SEG_D | SEG_G
 };
 
 const uint8_t SEG_TURN_LEFT[] = {
   SEG_A | SEG_D | SEG_G,
   0x00,
   0x00,
-  0x00 
+  0x00
 };
 
 const uint8_t SEG_TURN_BOTH[] = {
@@ -69,7 +73,7 @@ const uint8_t SEG_READY[] = {
 #define EE_CHECK_ADDRESS 99
 #define EE_METRIC_ADDRESS 77
 #define TIME_SINCE_STARTED_THRESHOLD 1000
-#define SCROLL_SPEED 800
+#define SCROLL_SPEED 500
 
 #define INIT_ODOMETER_READING_KM 0
 
@@ -83,6 +87,7 @@ float R2 = 7500.0;
 bool isMetric = true;
 bool enableBothTurnSignals = true;
 bool voltSensorBypass = true;
+bool alphaNumeric = true;
 
 bool isLeftTurnOn = false;
 bool isRightTurnOn = false;
@@ -111,12 +116,20 @@ float runningDistance = 0;
 
 
 // declate LED Display
+Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
 TM1637Display display(CLK, DIO);
 
 void setup()
 {
+  //init serial
+  Serial.begin(115200);
+  
   // Display settings
-  display.setBrightness(0x09);
+  if (alphaNumeric) {
+    alpha4.begin(0x70);  // pass in the address
+  } else {
+    display.setBrightness(0x09);
+  }
 
   //INIT EEPROM
   initEEPROM();
@@ -127,8 +140,6 @@ void setup()
     setMph();
   }
 
-  //init serial
-  Serial.begin(115200);
 
   // initialize GPS
   gpsSerial.begin(9600);
@@ -197,7 +208,7 @@ void loop()
       displaySpeed = speed;
       if (speed < MIN_SPEED) {
         displaySpeed = 0;
-      } 
+      }
     }
 
     // record distance if location available and traveling more than min speed
@@ -222,7 +233,7 @@ void loop()
   bool auxChanged = debouncerAux.update();
 
   //read left turn
-  if(leftChanged){
+  if (leftChanged) {
     if ((debouncerLeftTurn.read() == LOW)) {
       isLeftTurnOn = true;
       if (isLeftTurnOn && !enableBothTurnSignals) {
@@ -248,15 +259,15 @@ void loop()
   //check oil sensor
   isOil =  (digitalRead(OIL_SENSOR) == LOW);
 
-  // check if running 
+  // check if running
   isRunning = isMotorcycleRunning();
 
-  
+
   // set outputs
   if (isRunning) {
     //AUX Button
     digitalWrite(HORN_RELAY, !debouncerAux.read());
-    digitalWrite(STARTER_RELAY,LOW);
+    digitalWrite(STARTER_RELAY, LOW);
   } else {
     //AUX Button
     digitalWrite(STARTER_RELAY, !debouncerAux.read());
@@ -280,21 +291,28 @@ void persistRange(float range) {
 void scrollOdometer() {
   float value;
   EEPROM.get(EE_ODOMETER_ADDRESS, value);
+  
+    Serial.println("ODO VALUE: ");
+    Serial.print(value);
 
   if (!isMetric) {
     value = value / 1.609;
   }
 
-  int odometer = (int) value;
+  float odometer = (float) value;
 
   int digits = ((int) pow(odometer , 0.1)) + 1;
 
-  for (int i = 0; i < digits ; i++) {
-    int display_value = getDisplayValue(digits, i, odometer);
-    display.showNumberDec(display_value, i > 3, 3, 0);
+  if (alphaNumeric) {
+    scrollAlphaNumericDisaplay (odometer);
+  } else {
+    for (int i = 0; i < digits ; i++) {
+      int display_value = getDisplayValue(digits, i, odometer);
+      display.showNumberDec(display_value, i > 3, 3, 0);
+      delay(SCROLL_SPEED);
+    }
     delay(SCROLL_SPEED);
   }
-  delay(SCROLL_SPEED);
 }
 
 int getDisplayValue(int digits, int offset , int reading) {
@@ -316,7 +334,7 @@ boolean isMotorcycleRunning() {
     int value = analogRead(VOLT_SENSOR);
     float vOUT = (value * 5.0) / 1024.0;
     float vIN = vOUT / (R2 / (R1 + R2));
-  
+
     if ( vIN > VOLTAGE_THRESHOLD) {
       if (millisWhenStarted = 0) {
         millisWhenStarted = millis();
@@ -349,29 +367,126 @@ bool isTimeForBlink() {
 }
 
 void setDisplay() {
-  if (isOil) {
-    display.setSegments(SEG_OIL);
-    return;
-  }
-  
-  if(isRunning) {
-    if ((isLeftTurnOn || isRightTurnOn) && isTimeForBlink()) {
-      if (isLeftTurnOn && isRightTurnOn) {
-        display.setSegments(SEG_TURN_BOTH);
-      } else if (isLeftTurnOn) {
-        display.setSegments(SEG_TURN_LEFT);
-      } else if (isRightTurnOn) {
-        display.setSegments(SEG_TURN_RIGHT);
+  if (alphaNumeric) {
+    alphaNumericDisplay();
+  } else {
+    if (isOil) {
+      display.setSegments(SEG_OIL);
+      return;
+    }
+
+    if (isRunning) {
+      if ((isLeftTurnOn || isRightTurnOn) && isTimeForBlink()) {
+        if (isLeftTurnOn && isRightTurnOn) {
+          display.setSegments(SEG_TURN_BOTH);
+        } else if (isLeftTurnOn) {
+          display.setSegments(SEG_TURN_LEFT);
+        } else if (isRightTurnOn) {
+          display.setSegments(SEG_TURN_RIGHT);
+        } else {
+          setSpeed(displaySpeed);
+        }
       } else {
         setSpeed(displaySpeed);
       }
     } else {
+      display.setSegments(SEG_READY);
+    }
+  }
+}
+
+void alphaNumericDisplay() {
+  if (isOil) {
+    alpha4.writeDigitAscii(0, 'O');
+    alpha4.writeDigitAscii(1, 'I');
+    alpha4.writeDigitAscii(2, 'L');
+    alpha4.writeDigitAscii(3, ' ');
+
+  }
+else {
+  if (isRunning) {
+    if (isLeftTurnOn || isRightTurnOn) {
+      if (isTimeForBlink()) {
+
+        if (isLeftTurnOn && isRightTurnOn) {
+          alpha4.writeDigitAscii(0, '<');
+          alpha4.writeDigitAscii(1, ' ');
+          alpha4.writeDigitAscii(2, ' ');
+          alpha4.writeDigitAscii(3, '>');
+        } else if (isLeftTurnOn) {
+          alpha4.writeDigitAscii(0, '<');
+          alpha4.writeDigitAscii(1, ' ');
+          alpha4.writeDigitAscii(2, ' ');
+          alpha4.writeDigitAscii(3, ' ');
+        } else if (isRightTurnOn) {
+          alpha4.writeDigitAscii(0, ' ');
+          alpha4.writeDigitAscii(1, ' ');
+          alpha4.writeDigitAscii(2, ' ');
+          alpha4.writeDigitAscii(3, '>');
+        }
+      } else {
+        alpha4.writeDigitAscii(0, ' ');
+        alpha4.writeDigitAscii(1, ' ');
+        alpha4.writeDigitAscii(2, ' ');
+        alpha4.writeDigitAscii(3, ' ');
+
+      }
+    } else {
+
+      char buf [4];
+      sprintf (buf, "%03i", displaySpeed);
+      alpha4.writeDigitAscii(0, buf[0]);
+      alpha4.writeDigitAscii(1, buf[1]);
+      alpha4.writeDigitAscii(2, buf[2]);
+      alpha4.writeDigitAscii(3, isMetric ? 'K' : 'M');
       setSpeed(displaySpeed);
     }
   } else {
-    display.setSegments(SEG_READY);
+    alpha4.writeDigitAscii(0, '<');
+    alpha4.writeDigitAscii(1, '{');
+    alpha4.writeDigitAscii(2, '}');
+    alpha4.writeDigitAscii(3, '>');
   }
 }
+
+  alpha4.writeDisplay();
+}
+
+void scrollAlphaNumericDisaplay(float input) {
+  String result = String(input, DEC);
+  int loc = result.indexOf('.');
+  result = result.substring(0,loc);
+  result = "ODO-"+ result + (isMetric ? "K":"M") + "    ";
+  
+  char buf[result.length()];
+  result.toCharArray(buf, result.length());
+  
+  char displaybuffer[4] = {' ', ' ', ' ', ' '};
+  
+  
+
+  for (int i = 0; i < result.length()-1 ; i++ ) {
+    char c = buf[i];
+    displaybuffer[0] = displaybuffer[1];
+    displaybuffer[1] = displaybuffer[2];
+    displaybuffer[2] = displaybuffer[3];
+    displaybuffer[3] = c;
+
+    // set every digit to the buffer
+    alpha4.writeDigitAscii(0, displaybuffer[0]);
+    alpha4.writeDigitAscii(1, displaybuffer[1]);
+    alpha4.writeDigitAscii(2, displaybuffer[2]);
+    alpha4.writeDigitAscii(3, displaybuffer[3]);
+
+    alpha4.writeDisplay();
+    delay(SCROLL_SPEED);
+  }
+  alpha4.clear();
+  alpha4.writeDisplay();
+    delay(SCROLL_SPEED);
+
+}
+
 
 
 void setSpeed(int speed) {
@@ -396,12 +511,28 @@ void initEEPROM() {
   int check_value;
   EEPROM.get(EE_CHECK_ADDRESS, check_value);
 
-  if ( check_value == 255) {
+    Serial.println("CHECK ADDRESS VAL: ");
+    Serial.print(check_value);
+
+  if ( check_value == 0xFF) {
+    Serial.println("INIT EEPROM");
     EEPROM.put(EE_ODOMETER_ADDRESS, INIT_ODOMETER_READING_KM);
     EEPROM.put(EE_METRIC_ADDRESS, isMetric);
     setKph();
     EEPROM.put(EE_CHECK_ADDRESS, 0);
   } else {
+    Serial.println("NO INIT EEPROM");
     EEPROM.get(EE_METRIC_ADDRESS, isMetric);
+
+    
+  int odo_val;
+  EEPROM.get(EE_ODOMETER_ADDRESS, odo_val);
+    Serial.println("ODO VAL: ");
+    Serial.print(odo_val);
+    
+  int m_val;
+  EEPROM.get(EE_METRIC_ADDRESS, m_val);
+    Serial.println("M VAL: ");
+    Serial.print(m_val);
   }
 }
