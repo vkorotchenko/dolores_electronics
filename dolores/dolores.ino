@@ -8,25 +8,27 @@
 
 
 // Module connection pins (Digital Pins)
-#define CLK 2
-#define DIO 3
-#define GPS_TX 8
-#define GPS_RX 7
-#define RIGHT_TURN_IN 4
-#define RIGHT_TURN_RELAY 13
-#define LEFT_TURN_IN 6
-#define LEFT_TURN_RELAY 9
-#define HEAD_LIGHT_IN 10
-#define HEAD_LIGHT_RELAY A2
-#define AUX_IN 12
-#define STARTER_RELAY 11
-#define HORN_RELAY 5
-
-#define OIL_SENSOR A0
-#define VOLT_SENSOR A1
 #define FINGERPRINT_SLA 0
 #define FINGERPRINT_SLK 1
-#define FINGERPRINT_RELAY A2
+#define CLK 2
+#define DIO 3
+#define GPS_TX A5
+#define GPS_RX A4
+
+#define RIGHT_TURN_IN 10
+#define LEFT_TURN_IN 11
+#define HEAD_LIGHT_IN 12
+#define AUX_IN 13
+
+#define OIL_SENSOR 8
+#define VOLT_SENSOR 9
+
+#define FINGERPRINT_RELAY A3
+#define HORN_RELAY A2
+#define RIGHT_TURN_RELAY 4
+#define LEFT_TURN_RELAY 5
+#define HEAD_LIGHT_RELAY 6
+#define STARTER_RELAY 7
 
 
 //SEGMENTS
