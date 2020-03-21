@@ -4,6 +4,8 @@
 #include <NeoSWSerial.h>
 #include <Bounce2.h>
 #include <EEPROM.h>
+#include <Fingerprint.h>
+
 
 // Module connection pins (Digital Pins)
 #define CLK 2
@@ -22,6 +24,10 @@
 
 #define OIL_SENSOR A0
 #define VOLT_SENSOR A1
+#define FINGERPRINT_SLA 0
+#define FINGERPRINT_SLK 1
+#define FINGERPRINT_RELAY A2
+
 
 //SEGMENTS
 const uint8_t SEG_OIL[] = {
@@ -35,14 +41,14 @@ const uint8_t SEG_TURN_RIGHT[] = {
   0x00,
   0x00,
   0x00,
-  SEG_A | SEG_D | SEG_G 
+  SEG_A | SEG_D | SEG_G
 };
 
 const uint8_t SEG_TURN_LEFT[] = {
   SEG_A | SEG_D | SEG_G,
   0x00,
   0x00,
-  0x00 
+  0x00
 };
 
 const uint8_t SEG_TURN_BOTH[] = {
@@ -78,6 +84,10 @@ const uint8_t SEG_READY[] = {
 float R1 = 30000.0;
 float R2 = 7500.0;
 
+//fingerprint
+
+Fingerprint finger = Fingerprint(&Serial);
+bool loggedIn = false;
 
 // VARIABLES
 bool isMetric = true;
@@ -127,8 +137,10 @@ void setup()
     setMph();
   }
 
-  //init serial
-  Serial.begin(115200);
+  //fingerprint
+  pinMode(FINGERPRINT_RELAY, OUTPUT);
+  finger.begin(57600);
+
 
   // initialize GPS
   gpsSerial.begin(9600);
@@ -175,6 +187,16 @@ void setup()
 
 void loop()
 {
+  while (!loggedIn) {
+    int id = getFingerprintIDez();
+    if (id > 0 && id < 11) {
+      digitalWrite(FINGERPRINT_RELAY, HIGH);
+      loggedIn = true;
+
+      // TODO SCROLL "WELCOME VADIM"
+    }
+  }
+
   // read GPS if available
   while (gps.available( gpsSerial ))
   {
@@ -197,7 +219,7 @@ void loop()
       displaySpeed = speed;
       if (speed < MIN_SPEED) {
         displaySpeed = 0;
-      } 
+      }
     }
 
     // record distance if location available and traveling more than min speed
@@ -222,7 +244,7 @@ void loop()
   bool auxChanged = debouncerAux.update();
 
   //read left turn
-  if(leftChanged){
+  if (leftChanged) {
     if ((debouncerLeftTurn.read() == LOW)) {
       isLeftTurnOn = true;
       if (isLeftTurnOn && !enableBothTurnSignals) {
@@ -248,15 +270,15 @@ void loop()
   //check oil sensor
   isOil =  (digitalRead(OIL_SENSOR) == LOW);
 
-  // check if running 
+  // check if running
   isRunning = isMotorcycleRunning();
 
-  
+
   // set outputs
   if (isRunning) {
     //AUX Button
     digitalWrite(HORN_RELAY, !debouncerAux.read());
-    digitalWrite(STARTER_RELAY,LOW);
+    digitalWrite(STARTER_RELAY, LOW);
   } else {
     //AUX Button
     digitalWrite(STARTER_RELAY, !debouncerAux.read());
@@ -316,7 +338,7 @@ boolean isMotorcycleRunning() {
     int value = analogRead(VOLT_SENSOR);
     float vOUT = (value * 5.0) / 1024.0;
     float vIN = vOUT / (R2 / (R1 + R2));
-  
+
     if ( vIN > VOLTAGE_THRESHOLD) {
       if (millisWhenStarted = 0) {
         millisWhenStarted = millis();
@@ -353,8 +375,8 @@ void setDisplay() {
     display.setSegments(SEG_OIL);
     return;
   }
-  
-  if(isRunning) {
+
+  if (isRunning) {
     if ((isLeftTurnOn || isRightTurnOn) && isTimeForBlink()) {
       if (isLeftTurnOn && isRightTurnOn) {
         display.setSegments(SEG_TURN_BOTH);
@@ -404,4 +426,17 @@ void initEEPROM() {
   } else {
     EEPROM.get(EE_METRIC_ADDRESS, isMetric);
   }
+}
+
+int getFingerprintIDez() {
+  uint8_t p = finger.getImage();
+  if (p != FINGERPRINT_OK)  return -1;
+
+  p = finger.image2Tz();
+  if (p != FINGERPRINT_OK)  return -1;
+
+  p = finger.fingerFastSearch();
+  if (p != FINGERPRINT_OK)  return -1;
+
+  return finger.fingerID;
 }
