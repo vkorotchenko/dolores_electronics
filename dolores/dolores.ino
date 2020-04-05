@@ -1,13 +1,18 @@
 #include <Arduino.h>
-#include <EEPROM.h>
 #include <Wire.h>
+#include <EEPROM.h>
+#include <Bounce2.h>
+#include <NMEAGPS.h>
+#include <NeoSWSerial.h>
+#include <Fingerprint.h>
+#include <TM1637Display.h>
+#include <Adafruit_LEDBackpack.h>
 #include <Adafruit_GFX.h>
 
-// Module connection pins (Digital Pins)
-#define FINGERPRINT_SLA 0 // /
-#define FINGERPRINT_SLK 1 // /
-#define CLK_DISPLAY A4 // SDA
-#define DIO_DISPLAY A5 // SCL
+#define FINGERPRINT_SLA 0
+#define FINGERPRINT_SLK 1
+#define CLK_DISPLAY A4
+#define DIO_DISPLAY A5
 #define GPS_TX 2
 #define GPS_RX 3
 
@@ -27,8 +32,110 @@
 #define STARTER_RELAY 7
 
 
+class DoloresTimer {
+#define TURN_SIGNAL_BLINK_DELAY 800
 
-class Voltage {
+  public:
+    static bool isTimeForBlink() {
+      return (millis() % (2 * TURN_SIGNAL_BLINK_DELAY)) < TURN_SIGNAL_BLINK_DELAY;
+    }
+};
+
+class DoloresDatabase {
+#define EE_ODOMETER_ADDRESS 0
+#define EE_CHECK_ADDRESS 99
+#define EE_METRIC_ADDRESS 77
+#define INIT_ODOMETER_READING_KM 0.0
+
+  private:
+    static void checkEEPROM() {
+      int check_value;
+      EEPROM.get(EE_CHECK_ADDRESS, check_value);
+
+      if ( check_value == 0xFF) {
+        EEPROM.put(EE_ODOMETER_ADDRESS, INIT_ODOMETER_READING_KM);
+        EEPROM.put(EE_METRIC_ADDRESS, true);
+        EEPROM.put(EE_CHECK_ADDRESS, 0);
+      }
+    }
+
+  public:
+    static void setKph() {
+      EEPROM.update(EE_METRIC_ADDRESS, true);
+    }
+
+    static void setMph() {
+      EEPROM.update(EE_METRIC_ADDRESS, false);
+    }
+
+    static boolean isMetric() {
+      checkEEPROM();
+      boolean isMetric;
+      EEPROM.get(EE_METRIC_ADDRESS, isMetric);
+      return isMetric;
+    }
+
+    static float getOdometer() {
+      checkEEPROM();
+      float odometer;
+      EEPROM.get(EE_ODOMETER_ADDRESS, odometer);
+
+      if (!DoloresDatabase::isMetric()) {
+        odometer = odometer / 1.609;
+      }
+
+      return odometer;
+
+    }
+
+    static void updateOdometer(float odometer) {
+      DoloresDatabase::checkEEPROM();
+      EEPROM.update(EE_ODOMETER_ADDRESS, odometer);
+    }
+};
+
+class DoloresRelay {
+  private:
+    byte pin;
+  public:
+    DoloresRelay(byte pin) {
+      this->pin = pin;
+      pinMode(pin, OUTPUT);
+    }
+
+    void turnOn() {
+      digitalWrite(pin, HIGH);
+    }
+
+    void turnOff() {
+      digitalWrite(pin, LOW);
+    }
+
+    void toggle() {
+      digitalWrite(pin, !getState());
+    }
+
+    byte getState() {
+      return digitalRead(pin);
+    }
+
+};
+
+class DoloresOil {
+  private:
+    byte pin;
+  public:
+    DoloresOil(byte pin) {
+      this->pin = pin;
+      pinMode(pin, INPUT_PULLUP);
+    }
+
+    bool isTriggered() {
+      return (digitalRead(pin) == LOW);
+    }
+};
+
+class DoloresVoltage {
 #define TIME_SINCE_STARTED_THRESHOLD 1000
 #define THRESHOLD .8
 #define RESISTOR1 30000.0
@@ -38,12 +145,9 @@ class Voltage {
     int initialValue;
     long millisWhenStarted = 0;
   public:
-    Voltage(byte pin) {
+    DoloresVoltage(byte pin) {
       this->pin = pin;
       this->initialValue = analogRead(pin);
-    }
-
-    void init() {
       pinMode(pin, INPUT);
     }
 
@@ -58,6 +162,7 @@ class Voltage {
           return true;
         }
       }
+      millisWhenStarted = 0;
       return false;
     }
 
@@ -69,24 +174,31 @@ class Voltage {
     }
 };
 
-class Button {
-#include <Bounce2.h>
+
+class DoloresButton {
 #define DEBOUNCE_DELAY 50
   private:
     byte pin;
     Bounce button = Bounce();
-    byte state;
-  public:
-    Button(byte pin) {
-      this->pin = pin;
-      pinMode(pin, INPUT_PULLUP);
-    }
+    DoloresRelay* relay;
 
-    void init() {
+  public:
+    DoloresButton(byte pin, byte relayPin) {
+      this->pin = pin;
+      this->relay = new DoloresRelay(relayPin);
+
+      pinMode(pin, INPUT_PULLUP);
       button.attach(pin);
       button.interval(DEBOUNCE_DELAY);
       button.update();
-      state = button.read();
+    }
+
+    void turnOn() {
+      relay->turnOn();
+    }
+
+    void turnOff() {
+      relay->turnOff();
     }
 
     boolean isTriggered() {
@@ -99,68 +211,101 @@ class Button {
       return (changed && button.read() == HIGH);
     }
 
-    byte getCurrentState() {
+    virtual void check() {
+      if (isTriggered()) {
+        turnOn();
+      } else if (isReleased()) {
+        turnOff();
+      }
+    }
 
+    boolean isOn() {
+      return relay->getState() == HIGH;
     }
 };
 
-class Relay {
+class DoloresAuxButton : public DoloresButton {
   private:
-    byte pin;
+    DoloresRelay* relayAlt;
+
+    void turnAltOn() {
+      relayAlt->turnOn();
+    }
+    void turnAltOff() {
+      relayAlt->turnOff();
+    }
   public:
-    Relay(byte pin) {
-      this->pin = pin;
-      pinMode(pin, OUTPUT);
+    DoloresAuxButton (byte pin, byte relayPin, byte relayPinAlt) : DoloresButton(pin, relayPin){
+
+      this->relayAlt = new DoloresRelay(relayPinAlt);
     }
 
-    void turnOn() {
-      digitalWrite(pin, HIGH);
+  void check(bool useAlt) {
+      if (isTriggered()) {
+        if (useAlt) {
+          turnAltOn();
+        } else {
+          turnOn();
+        }
+      } else if (isReleased()) {
+        turnOff();
+        turnAltOff();
+      }
     }
-
-    void turnOff() {
-      digitalWrite(pin, LOW);
-    }
-
-    void toggle() {
-      digitalWrite(pin, !digitalRead(pin));
-    }
-
 };
 
-class Display {
-#include <TM1637Display.h>
-#include <Adafruit_LEDBackpack.h>
-#define SCROLL_SPEED 400
+class DoloresTurnButton : public DoloresButton {
+  public:
+    DoloresTurnButton (byte pin, byte relayPin) : DoloresButton(pin, relayPin) {
+    }
 
-    const uint8_t SEG_OIL[] = {
+    void check() {
+      if (isTriggered()) {
+        if (DoloresTimer::isTimeForBlink()) {
+          turnOn();
+        } else {
+          turnOff();
+        }
+      } else if (isReleased()) {
+        turnOff();
+      }
+    }
+};
+
+class DoloresDisplay {
+
+#define SCROLL_SPEED 400
+#define TURN_SIGNAL_BLINK_DELAY 800
+
+    const uint8_t SEG_OIL[4] = {
       SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,   // O
       SEG_E | SEG_F,                                   // I
       SEG_E | SEG_F | SEG_D,                           // L
       0x00                                             //
     };
 
-    const uint8_t SEG_TURN_RIGHT[] = {
+    const uint8_t SEG_TURN_RIGHT[4] = {
       0x00,
       0x00,
       0x00,
       SEG_A | SEG_D | SEG_G
     };
 
-    const uint8_t SEG_TURN_LEFT[] = {
+    const uint8_t SEG_TURN_LEFT[4] = {
       SEG_A | SEG_D | SEG_G,
       0x00,
       0x00,
       0x00
     };
 
-    const uint8_t SEG_TURN_BOTH[] = {
+    const uint8_t SEG_TURN_BOTH[4] = {
       SEG_A | SEG_D | SEG_G,
       0x00,
       0x00,
       SEG_A | SEG_D | SEG_G
     };
 
-    const uint8_t SEG_READY[] = {
+    const uint8_t SEG_READY[4] = {
       SEG_G,
       SEG_G,
       SEG_G,
@@ -173,12 +318,13 @@ class Display {
     byte pin_DIO_SCL;
     boolean isAlphanumeric;
     Adafruit_AlphaNum4 alpha4;
+    TM1637Display* numeric4;
 
     void displayOdometerAlphanumeric(float input) {
       String result = String(input, DEC);
       int loc = result.indexOf('.');
       result = result.substring(0, loc);
-      result = "ODO-" + result + (isMetric ? "K" : "M") ;
+      result = "ODO-" + result + (DoloresDatabase::isMetric() ? "K" : "M") ;
       scrollAlphaNumericDisaplay(result);
     }
 
@@ -208,36 +354,35 @@ class Display {
       delay(SCROLL_SPEED);
     }
 
-    void digitalDisplay() {
+    void digitalDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed) {
       if (isOil) {
-        display.setSegments(SEG_OIL);
+        numeric4->setSegments(SEG_OIL);
       } else {
         if (isRunning) {
-          if (isLeftTurnOn || isRightTurnOn) {
-            if (isTimeForBlink()) {
-              if (isLeftTurnOn && isRightTurnOn) {
-                display.setSegments(SEG_TURN_BOTH);
-              } else if (isLeftTurnOn) {
-                display.setSegments(SEG_TURN_LEFT);
-              } else if (isRightTurnOn) {
-                display.setSegments(SEG_TURN_RIGHT);
+          if (isLeftTurn || isRightTurn) {
+            if (DoloresTimer::isTimeForBlink()) {
+              if (isLeftTurn && isRightTurn) {
+                numeric4->setSegments(SEG_TURN_BOTH);
+              } else if (isLeftTurn) {
+                numeric4->setSegments(SEG_TURN_LEFT);
+              } else if (isRightTurn) {
+                numeric4->setSegments(SEG_TURN_RIGHT);
               }
             } else {
-              display.clear();
+              numeric4->clear();
             }
           } else {
-            uint8_t kph[] = { 0x00, 0x00, 0x00, (isMetric ? SEG_A : SEG_D) };
-            display.setSegments(kph);
-            display.showNumberDec(displaySpeed, true, 3, 0);
+            uint8_t kph[] = { 0x00, 0x00, 0x00, (DoloresDatabase::isMetric() ? SEG_A : SEG_D) };
+            numeric4->setSegments(kph);
+            numeric4->showNumberDec(displaySpeed, true, 3, 0);
           }
         } else {
-          display.setSegments(SEG_READY);
+          numeric4->setSegments(SEG_READY);
         }
       }
-
     }
 
-    void alphaNumericDisplay() {
+    void alphaNumericDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed) {
       if (isOil) {
         alpha4.writeDigitAscii(0, 'O');
         alpha4.writeDigitAscii(1, 'I');
@@ -245,19 +390,19 @@ class Display {
         alpha4.writeDigitAscii(3, ' ');
       } else {
         if (isRunning) {
-          if (isLeftTurnOn || isRightTurnOn) {
-            if (isTimeForBlink()) {
-              if (isLeftTurnOn && isRightTurnOn) {
+          if (isLeftTurn || isRightTurn) {
+            if (DoloresTimer::isTimeForBlink()) {
+              if (isLeftTurn && isRightTurn) {
                 alpha4.writeDigitAscii(0, '<');
                 alpha4.writeDigitAscii(1, ' ');
                 alpha4.writeDigitAscii(2, ' ');
                 alpha4.writeDigitAscii(3, '>');
-              } else if (isLeftTurnOn) {
+              } else if (isLeftTurn) {
                 alpha4.writeDigitAscii(0, '<');
                 alpha4.writeDigitAscii(1, ' ');
                 alpha4.writeDigitAscii(2, ' ');
                 alpha4.writeDigitAscii(3, ' ');
-              } else if (isRightTurnOn) {
+              } else if (isRightTurn) {
                 alpha4.writeDigitAscii(0, ' ');
                 alpha4.writeDigitAscii(1, ' ');
                 alpha4.writeDigitAscii(2, ' ');
@@ -276,7 +421,7 @@ class Display {
             alpha4.writeDigitAscii(0, buf[0]);
             alpha4.writeDigitAscii(1, buf[1]);
             alpha4.writeDigitAscii(2, buf[2]);
-            alpha4.writeDigitAscii(3, isMetric ? 'K' : 'M');
+            alpha4.writeDigitAscii(3, DoloresDatabase::isMetric() ? 'K' : 'M');
           }
         } else {
           alpha4.writeDigitAscii(0, '<');
@@ -289,15 +434,12 @@ class Display {
     }
 
     void displayOdometerDigital (float input) {
-      int odometer;
-      if (!isMetric) {
-        odometer = input / 1.609;
-      }
+      int odometer = (int) input;
 
       int digits = ((int) pow(odometer , 0.1)) + 1;
       for (int i = 0; i < digits ; i++) {
         int display_value = getDisplayValue(digits, i, odometer);
-        display.showNumberDec(display_value, i > 3, 3, 0);
+        numeric4->showNumberDec(display_value, i > 3, 3, 0);
         delay(SCROLL_SPEED);
       }
     }
@@ -315,83 +457,69 @@ class Display {
     }
 
   public:
-    Relay(byte pin_CLK_SDA, byte pin_DIO_SCL, boolean isAlphanumeric = true) {
+    DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL, boolean isAlphanumeric = true) {
       this->pin_CLK_SDA = pin_CLK_SDA;
       this->pin_DIO_SCL = pin_DIO_SCL;
       this->isAlphanumeric = isAlphanumeric;
       this->alpha4 = Adafruit_AlphaNum4();
-      TM1637Display display(CLK_DISPLAY, DIO_DISPLAY);
-    }
-
-    init() {
-      alpha4.begin(0x70);  // pass in the address
+      this->numeric4 = new TM1637Display(CLK_DISPLAY, DIO_DISPLAY);
+      alpha4.begin(0x70);
     }
 
     void scrollText(String value) {
-      if (alphaNumeric) {
+      if (isAlphanumeric) {
         scrollAlphaNumericDisaplay(value);
+      } else {
+        delay(2000);
       }
     }
 
-    void scrollOdometer(float odometer) { // TODO move EEPROM and conversion out and pass into function
-      //      float value;
-      //      EEPROM.get(EE_ODOMETER_ADDRESS, value);
-      //
-      //      if (!isMetric) {
-      //        value = value / 1.609;
-      //      }
-
-
-      if (alphaNumeric) {
+    void scrollOdometer(float odometer) {
+      if (isAlphanumeric) {
         displayOdometerAlphanumeric(odometer);
       } else {
         displayOdometerDigital(odometer);
       }
     }
 
-    void setDisplay() {
-      if (alphaNumeric) {
-        alphaNumericDisplay();
+    void setDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed) {
+      if (isAlphanumeric) {
+        alphaNumericDisplay(isOil, isRunning, isLeftTurn, isRightTurn, displaySpeed);
       } else {
-        digitalDisplay();
+        digitalDisplay(isOil, isRunning, isLeftTurn, isRightTurn, displaySpeed);
       }
     }
-
-
 };
 
-class Fingerprint {
-#include <Fingerprint.h>
+class DoloresFingerprint {
   private:
     byte pin_SLA;
     byte pin_SLK;
-    Relay relay;
-    Fingerprint finger;
+    DoloresRelay* relay;
+    Fingerprint* finger;
     boolean loggedIn;
 
     int getFingerprintIDez() {
-      uint8_t p = finger.getImage();
+      uint8_t p = finger->getImage();
       if (p != FINGERPRINT_OK)  return -1;
 
-      p = finger.image2Tz();
+      p = finger->image2Tz();
       if (p != FINGERPRINT_OK)  return -1;
 
-      p = finger.fingerFastSearch();
+      p = finger->fingerFastSearch();
       if (p != FINGERPRINT_OK)  return -1;
 
-      return finger.fingerID;
+      return finger->fingerID;
     }
   public:
-    Fingerprint(byte pin_SLA, byte pin_SLK, byte relay) {
+    DoloresFingerprint(byte pin_SLA, byte pin_SLK, byte relay) {
       this->pin_SLA = pin_SLA;
       this->pin_SLK = pin_SLK;
-      this->relay = Relay(relay);
-      this->finger = Fingerprint(&Serial);
+      this->relay = new DoloresRelay(relay);
+      this->finger = new Fingerprint(&Serial);
       this->loggedIn = false;
-    }
 
-    void init() {
-      finger.begin(57600);
+      finger->begin(57600);
     }
 
     // return true if just logged in
@@ -399,12 +527,9 @@ class Fingerprint {
       while (!loggedIn) {
         int id = getFingerprintIDez();
         if (id > 0 && id < 11) {
-          digitalWrite(FINGERPRINT_RELAY, HIGH);
+          relay->turnOn();
           loggedIn = true;
           return true;
-          //          if (alphaNumeric) {
-          //            scrollAlphaNumericDisaplay("WELCOME VADIM"); // TODO move out -> run only once.
-          //          }
         }
       }
       return false;
@@ -412,55 +537,48 @@ class Fingerprint {
 
 };
 
-class GPS {
-#include <NMEAGPS.h>
-#include <NeoSWSerial.h>
+class DoloresGPS {
 #define MIN_SPEED 5
-#define RUNNING_DISTANCE_THRESHOLD 1.00f
+#define RUNNING_DISTANCE_THRESHOLD 1.00
   private:
     byte pin_TX;
     byte pin_RX;
     NMEAGPS gps;
-
     NeoGPS::Location_t prev_location;
+    NeoSWSerial* gpsSerial;
     bool firstLocationScan = true;
     float runningDistance = 0;
 
-    
-void persistRange(float range) {
-  float odometer = 0.00f;
-  EEPROM.get( EE_ODOMETER_ADDRESS, odometer);
-  odometer = odometer + range;
-  EEPROM.update( EE_ODOMETER_ADDRESS, odometer);
-}
+    void persistRange(float range) {
+      DoloresDatabase::updateOdometer(DoloresDatabase::getOdometer() + range);
+    }
   public:
-    GPS(byte pin_TX, byte pin_RX) {
+    DoloresGPS(byte pin_TX, byte pin_RX) {
       this->pin_TX = pin_TX;
       this->pin_RX = pin_RX;
-    }
 
-    void init() {
-      NeoSWSerial gpsSerial(pin_TX, pin_RX);
+      gpsSerial = new NeoSWSerial(pin_TX, pin_RX);
 
       // initialize GPS
-      gpsSerial.begin(9600);
-      gps.send_P( &gpsSerial, F("PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")); // RMC(Recomended minim specific) only
-      gps.send_P( &gpsSerial, F("PMTK220,1000") ); // 4Hz update
+      gpsSerial->begin(9600);
+      gps.send_P( gpsSerial, F("PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")); // RMC(Recomended minim specific) only
+      gps.send_P( gpsSerial, F("PMTK220,1000") ); // 4Hz update
     }
 
-    void getGps() {
-      while (gps.available( gpsSerial )) {
+    int getGps() {
+      int displaySpeed = 0;
+      while (gps.available(*gpsSerial)) {
         gps_fix fix = gps.read();
 
-        if (fix.latitude() < 49 && isMetric) {
-          setMph();
-        } else if (fix.latitude() >= 49 && !isMetric) {
-          setKph();
+        if (fix.latitude() < 49) {
+          DoloresDatabase::setMph();
+        } else if (fix.latitude() >= 49) {
+          DoloresDatabase::setKph();
         }
 
         if (fix.valid.speed) {
           int speed;
-          if (isMetric) {
+          if (DoloresDatabase::isMetric()) {
             speed = (int)fix.speed_kph();
           } else {
             speed = (int)fix.speed_mph();
@@ -487,99 +605,42 @@ void persistRange(float range) {
           }
         }
       }
+      return displaySpeed;
     }
-
 };
 
-//SEGMENTS
 
-// CONSTANTS
-#define DEBOUNCE_DELAY 50
-#define TURN_SIGNAL_BLINK_DELAY 800
-#define VOLTAGE_THRESHOLD 13.5
-#define EE_ODOMETER_ADDRESS 0
-#define EE_CHECK_ADDRESS 99
-#define EE_METRIC_ADDRESS 77
+DoloresTurnButton* buttonLeft;
+DoloresTurnButton* buttonRight;
+DoloresButton* buttonHeadLight;
+DoloresAuxButton* buttonAux;
 
-#define INIT_ODOMETER_READING_KM 0
+DoloresGPS* gps;
+DoloresFingerprint* fingerprint;
+DoloresDisplay* screen;
+DoloresOil* oil;
+DoloresVoltage* volt;
 
-
-
-// CONFIG
-bool isMetric = true;
-bool enableBothTurnSignals = true;
-bool alphaNumeric = true;
-
-bool isLeftTurnOn = false;
-bool isRightTurnOn = false;
-bool isHeadlightOn = false;
-
-long millisWhenStarted = 0;
-
-// display variables
-int displaySpeed = 0;
-bool isOil = false;
-bool isRunning = false;
-
-//decleare Bounce
-Bounce debouncerRightTurn = Bounce();
-Bounce debouncerLeftTurn = Bounce();
-Bounce debouncerHeadlight = Bounce();
-Bounce debouncerAux = Bounce();
-
-
-
-// declate LED Display
-Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
-TM1637Display display(CLK_DISPLAY, DIO_DISPLAY);
 
 void setup() {
-  // Display settings
+  buttonLeft = new DoloresTurnButton(LEFT_TURN_IN, LEFT_TURN_RELAY);
+  buttonRight = new DoloresTurnButton(RIGHT_TURN_IN, RIGHT_TURN_RELAY);
+  buttonHeadLight = new DoloresButton(HEAD_LIGHT_IN, HEAD_LIGHT_RELAY);
+  buttonAux = new DoloresAuxButton(AUX_IN,STARTER_RELAY, HORN_RELAY);
 
-  //INIT EEPROM
-  initEEPROM();
+  gps = new DoloresGPS(GPS_TX, GPS_RX);
+  fingerprint = new DoloresFingerprint(FINGERPRINT_SLA, FINGERPRINT_SLK, FINGERPRINT_RELAY);
+  screen = new DoloresDisplay(CLK_DISPLAY, DIO_DISPLAY);
+  oil = new DoloresOil(OIL_SENSOR);
+  volt = new DoloresVoltage(VOLT_SENSOR);
 
-  if (isMetric) {
-    setKph();
-  } else {
-    setMph();
-  }
-
-
-
-  // set pin modes
-  // INPUT
-  pinMode(RIGHT_TURN_IN, INPUT_PULLUP);
-  pinMode(LEFT_TURN_IN, INPUT_PULLUP);
-  pinMode(HEAD_LIGHT_IN, INPUT_PULLUP);
-  pinMode(AUX_IN, INPUT_PULLUP);
-  pinMode(OIL_SENSOR, INPUT_PULLUP);
-  pinMode(VOLT_SENSOR, INPUT);
-
-  //init bounce
-  debouncerRightTurn.attach(RIGHT_TURN_IN);
-  debouncerRightTurn.interval(DEBOUNCE_DELAY);
-  debouncerLeftTurn.attach(LEFT_TURN_IN);
-  debouncerLeftTurn.interval(DEBOUNCE_DELAY);
-  debouncerHeadlight.attach(HEAD_LIGHT_IN);
-  debouncerHeadlight.interval(DEBOUNCE_DELAY);
-  debouncerAux.attach(AUX_IN);
-  debouncerAux.interval(DEBOUNCE_DELAY);
-
-
-  //OUTPUT
-  pinMode(RIGHT_TURN_RELAY, OUTPUT);
-  pinMode(LEFT_TURN_RELAY, OUTPUT);
-  pinMode(HEAD_LIGHT_RELAY, OUTPUT);
-  pinMode(STARTER_RELAY, OUTPUT);
-  pinMode(HORN_RELAY, OUTPUT);
 
   //ELECTRONICS TEST
   digitalWrite(RIGHT_TURN_RELAY, HIGH);
   digitalWrite(LEFT_TURN_RELAY, HIGH);
 
   //DISPLAY ODOMETER
-  display.scrollOdometer(odometer);
+  screen->scrollOdometer(DoloresDatabase::getOdometer());
 
   digitalWrite(RIGHT_TURN_RELAY, LOW);
   digitalWrite(LEFT_TURN_RELAY, LOW);
@@ -587,114 +648,28 @@ void setup() {
 
 void loop() {
 
-  boolean isLoggedIn = fingerprint.logIn();
+  boolean isLoggedIn = fingerprint->logIn();
   if (isLoggedIn) {
-    display.scrollText("WELCOME VADIM");
+    screen->scrollText("WELCOME VADIM");
   }
 
-  gps.getGps();
-
-  bool rightChanged = debouncerRightTurn.update();
-  bool leftChanged = debouncerLeftTurn.update();
-  bool headChanged = debouncerHeadlight.update();
-  bool auxChanged = debouncerAux.update();
-
-  //read left turn
-  if (leftChanged) {
-    if ((debouncerLeftTurn.read() == LOW)) {
-      isLeftTurnOn = true;
-      if (isLeftTurnOn && !enableBothTurnSignals) {
-        isRightTurnOn = false;
-      }
-    } else {
-      isLeftTurnOn = false;
-    }
-  }
-
-  //read right turn
-  if (rightChanged) {
-    if (debouncerRightTurn.read() == LOW) {
-      isRightTurnOn = true;
-      if (isRightTurnOn && !enableBothTurnSignals) {
-        isLeftTurnOn = false;
-      }
-    } else {
-      isRightTurnOn = false;
-    }
-  }
-
+  int displaySpeed = gps->getGps();
+  
   //check oil sensor
-  isOil =  (digitalRead(OIL_SENSOR) == LOW);
+  boolean isOil =  oil->isTriggered();
 
   // check if running
-  isRunning = isMotorcycleRunning();
+  boolean isRunning = volt->isTriggered();
 
 
-  // set outputs
-  if (isRunning) {
-    //AUX Button
-    digitalWrite(HORN_RELAY, !debouncerAux.read());
-    digitalWrite(STARTER_RELAY, LOW);
-  } else {
-    //AUX Button
-    digitalWrite(STARTER_RELAY, !debouncerAux.read());
-    digitalWrite(HORN_RELAY, LOW);
-  }
+  buttonLeft->check();
+  buttonRight->check();
+  buttonHeadLight->check();
+  buttonAux->check(isRunning);
 
-  blinkTurnSignal(isLeftTurnOn, LEFT_TURN_RELAY);
-  blinkTurnSignal(isRightTurnOn, RIGHT_TURN_RELAY);
-  digitalWrite(HEAD_LIGHT_RELAY, !debouncerHeadlight.read());
-  setDisplay();
+  screen->setDisplay(isOil, isRunning, buttonLeft->isOn(), buttonRight->isOn(), displaySpeed);
 }
 
 
-boolean isMotorcycleRunning() {
 
-
-}
-
-void blinkTurnSignal(bool isOn, int pin) {
-  if (isOn) {
-    if (isTimeForBlink()) {
-      digitalWrite(pin, HIGH);
-    } else {
-      digitalWrite(pin, LOW);
-    }
-  } else {
-    digitalWrite(pin, LOW);
-  }
-}
-
-bool isTimeForBlink() {
-  return (millis() % (2 * TURN_SIGNAL_BLINK_DELAY)) < TURN_SIGNAL_BLINK_DELAY;
-}
-
-
-void setKph() {
-  isMetric = true;
-  EEPROM.update(EE_METRIC_ADDRESS, isMetric);
-}
-
-void setMph() {
-  isMetric = false;
-  EEPROM.update(EE_METRIC_ADDRESS, isMetric);
-}
-
-void initEEPROM() {
-  int check_value;
-  EEPROM.get(EE_CHECK_ADDRESS, check_value);
-
-  if ( check_value == 0xFF) {
-    EEPROM.put(EE_ODOMETER_ADDRESS, INIT_ODOMETER_READING_KM);
-    EEPROM.put(EE_METRIC_ADDRESS, isMetric);
-    setKph();
-    EEPROM.put(EE_CHECK_ADDRESS, 0);
-  } else {
-    EEPROM.get(EE_METRIC_ADDRESS, isMetric);
-    int odo_val;
-    EEPROM.get(EE_ODOMETER_ADDRESS, odo_val);
-    int m_val;
-    EEPROM.get(EE_METRIC_ADDRESS, m_val);
-  }
-}
 
