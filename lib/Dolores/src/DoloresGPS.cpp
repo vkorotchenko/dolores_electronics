@@ -32,29 +32,29 @@ int DoloresGPS::getGps() {
     if (fix.valid.speed) {
         int speed;
         if (DoloresDatabase::isMetric()) {
-        speed = (int)fix.speed_kph();
+            speed = (int)fix.speed_kph();
         } else {
-        speed = (int)fix.speed_mph();
+            speed = (int)fix.speed_mph();
         }
 
         displaySpeed = speed;
         if (speed < MIN_SPEED) {
-        displaySpeed = 0;
+            displaySpeed = 0;
         }
     }
 
     // record distance if location available and traveling more than min speed
     if (fix.valid.location && displaySpeed >= MIN_SPEED) {
         if (firstLocationScan) {
-        firstLocationScan = false;
-        prev_location = fix.location;
+            firstLocationScan = false;
+            prev_location = fix.location;
         } else {
-        float range = fix.location.DistanceKm (prev_location);
-        runningDistance = runningDistance + range;
-        if (runningDistance > RUNNING_DISTANCE_THRESHOLD) {
-            persistRange(range);
-            runningDistance = 0;
-        }
+            float range = fix.location.DistanceKm (prev_location);
+            runningDistance = runningDistance + range;
+            if (runningDistance > RUNNING_DISTANCE_THRESHOLD) {
+                persistRange(range);
+                runningDistance = 0;
+            }
         }
     }
     }
