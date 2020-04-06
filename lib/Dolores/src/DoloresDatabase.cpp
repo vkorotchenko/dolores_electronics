@@ -11,10 +11,10 @@ void DoloresDatabase::checkEEPROM() {
     int check_value;
     EEPROM.get(EE_CHECK_ADDRESS, check_value);
 
-    if ( check_value == 0xFF) {
+    if ( check_value == 0xFF || check_value == 0) {
     EEPROM.put(EE_ODOMETER_ADDRESS, INIT_ODOMETER_READING_KM);
     EEPROM.put(EE_METRIC_ADDRESS, true);
-    EEPROM.put(EE_CHECK_ADDRESS, 0);
+    EEPROM.put(EE_CHECK_ADDRESS, 1);
     }
 }
 

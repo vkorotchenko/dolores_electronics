@@ -1,12 +1,15 @@
 #include <Arduino.h>
 #include <DoloresOil.h>
 
-#define LED_PIN 13
+#define OIL_SENSOR A0
+
+DoloresOil* oil;
 
 void setup() {
-  pinMode(LED_PIN, OUTPUT);
+  Serial.begin(9600);
+  oil = new DoloresOil(OIL_SENSOR);
 }
 
 void loop() {
-    
+  Serial.println("IS OIL TRIGGERED: " + oil->isTriggered());
 }

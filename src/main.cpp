@@ -56,7 +56,7 @@ void setup() {
   buttonLeft = new DoloresTurnButton(LEFT_TURN_IN, LEFT_TURN_RELAY);
   buttonRight = new DoloresTurnButton(RIGHT_TURN_IN, RIGHT_TURN_RELAY);
   buttonHeadLight = new DoloresButton(HEAD_LIGHT_IN, HEAD_LIGHT_RELAY);
-  buttonAux = new DoloresAuxButton(AUX_IN,STARTER_RELAY, HORN_RELAY);
+  buttonAux = new DoloresAuxButton(AUX_IN, STARTER_RELAY, HORN_RELAY);
 
   gps = new DoloresGPS(GPS_TX, GPS_RX);
   fingerprint = new DoloresFingerprint(FINGERPRINT_SLA, FINGERPRINT_SLK, FINGERPRINT_RELAY);

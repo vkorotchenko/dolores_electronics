@@ -25,3 +25,7 @@ void DoloresAuxButton::check(bool useAlt) {
         turnAltOff();
     }
 }
+
+boolean DoloresAuxButton::isAltOn() {
+    return relayAlt->getState() == HIGH;
+}

@@ -210,8 +210,8 @@ void DoloresDisplay::scrollOdometer(float odometer) {
 
 void DoloresDisplay::setDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed) {
     if (isAlphanumeric) {
-    alphaNumericDisplay(isOil, isRunning, isLeftTurn, isRightTurn, displaySpeed);
+        alphaNumericDisplay(isOil, isRunning, isLeftTurn, isRightTurn, displaySpeed);
     } else {
-    digitalDisplay(isOil, isRunning, isLeftTurn, isRightTurn, displaySpeed);
+        digitalDisplay(isOil, isRunning, isLeftTurn, isRightTurn, displaySpeed);
     }
 }
