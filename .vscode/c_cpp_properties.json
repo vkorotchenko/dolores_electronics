@@ -1,0 +1,74 @@
+{
+    "configurations": [
+        {
+            "name": "!!! WARNING !!! AUTO-GENERATED FILE, PLEASE DO NOT MODIFY IT AND USE https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags"
+        },
+        {
+            "name": "Mac",
+            "macFrameworkPath": [],
+            "includePath": [
+                "/Users/vkorotchenko/dolores_electronics/include",
+                "/Users/vkorotchenko/dolores_electronics/src",
+                "/Users/vkorotchenko/dolores_electronics/lib/Dolores/src",
+                "/Users/vkorotchenko/dolores_electronics/lib/Bounce2/src",
+                "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                "/Users/vkorotchenko/dolores_electronics/lib/NeoGPS/src",
+                "/Users/vkorotchenko/dolores_electronics/lib/Adafruit_LED_Backpack-master",
+                "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                "/Users/vkorotchenko/dolores_electronics/lib/Fingerprint",
+                "/Users/vkorotchenko/dolores_electronics/lib/NeoSWSerial/src",
+                "/Users/vkorotchenko/dolores_electronics/lib/TM1637",
+                "/Users/vkorotchenko/dolores_electronics/lib/Adafruit_GFX_Library",
+                "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/cores/arduino",
+                "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/variants/standard",
+                "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                "/Users/vkorotchenko/.platformio/packages/tool-unity",
+                ""
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "/Users/vkorotchenko/dolores_electronics/include",
+                    "/Users/vkorotchenko/dolores_electronics/src",
+                    "/Users/vkorotchenko/dolores_electronics/lib/Dolores/src",
+                    "/Users/vkorotchenko/dolores_electronics/lib/Bounce2/src",
+                    "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                    "/Users/vkorotchenko/dolores_electronics/lib/NeoGPS/src",
+                    "/Users/vkorotchenko/dolores_electronics/lib/Adafruit_LED_Backpack-master",
+                    "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                    "/Users/vkorotchenko/dolores_electronics/lib/Fingerprint",
+                    "/Users/vkorotchenko/dolores_electronics/lib/NeoSWSerial/src",
+                    "/Users/vkorotchenko/dolores_electronics/lib/TM1637",
+                    "/Users/vkorotchenko/dolores_electronics/lib/Adafruit_GFX_Library",
+                    "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                    "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/cores/arduino",
+                    "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/variants/standard",
+                    "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                    "/Users/vkorotchenko/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                    "/Users/vkorotchenko/.platformio/packages/tool-unity",
+                    ""
+                ]
+            },
+            "defines": [
+                "PLATFORMIO=40301",
+                "ARDUINO_AVR_UNO",
+                "F_CPU=16000000L",
+                "ARDUINO_ARCH_AVR",
+                "ARDUINO=10808",
+                "__AVR_ATmega328P__",
+                ""
+            ],
+            "intelliSenseMode": "clang-x64",
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+            "compilerPath": "/Users/vkorotchenko/.platformio/packages/toolchain-atmelavr/bin/avr-gcc",
+            "compilerArgs": [
+                "-mmcu=atmega328p",
+                ""
+            ]
+        }
+    ],
+    "version": 4
+}
