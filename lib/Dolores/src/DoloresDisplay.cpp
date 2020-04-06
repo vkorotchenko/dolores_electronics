@@ -174,7 +174,16 @@ int DoloresDisplay::extractDigit(int v, int p) {
     return int(v / (pow(10, p - 1))) - int(v / (pow(10, p))) * 10;
 }
 
-DoloresDisplay::DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL, boolean isAlphanumeric = true) {
+DoloresDisplay::DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL) {
+    this->pin_CLK_SDA = pin_CLK_SDA;
+    this->pin_DIO_SCL = pin_DIO_SCL;
+    this->isAlphanumeric = true;
+    this->alpha4 = Adafruit_AlphaNum4();
+    this->numeric4 = new TM1637Display(pin_CLK_SDA, pin_DIO_SCL);
+    alpha4.begin(0x70);
+}
+
+DoloresDisplay::DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL, boolean isAlphanumeric) {
     this->pin_CLK_SDA = pin_CLK_SDA;
     this->pin_DIO_SCL = pin_DIO_SCL;
     this->isAlphanumeric = isAlphanumeric;

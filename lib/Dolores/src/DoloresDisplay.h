@@ -25,7 +25,8 @@ class DoloresDisplay {
     int getDisplayValue(int digits, int offset , int reading);
     int extractDigit(int v, int p) ;
   public:
-    DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL, boolean isAlphanumeric = true);
+    DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL, boolean isAlphanumeric);
+    DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL);
     void scrollText(String value);
     void scrollOdometer(float odometer);
     void setDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed);
