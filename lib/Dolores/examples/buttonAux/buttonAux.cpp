@@ -14,7 +14,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("BEGIN OPITON1");
+  Serial.println("BEGIN: " + (String)(DoloresTimer::isTimeForBlink()? " ALT " : "REG"));
   button->check(DoloresTimer::isTimeForBlink());
   boolean isOn = button->isOn();
   boolean isAltOn = button->isAltOn();
