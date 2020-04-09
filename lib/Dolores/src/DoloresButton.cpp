@@ -1,7 +1,7 @@
-
 #include "DoloresButton.h"
 
 #define DEBOUNCE_DELAY 50
+
 DoloresButton::DoloresButton(byte pin, byte relayPin) {
     this->pin = pin;
     this->relay = new DoloresRelay(relayPin);
@@ -11,34 +11,50 @@ DoloresButton::DoloresButton(byte pin, byte relayPin) {
     button->attach(pin);
     button->interval(DEBOUNCE_DELAY);
     button->update();
+    checkRelay();
 }
 
-void DoloresButton::turnOn() {
-    relay->turnOn();
+byte DoloresButton::readButton() {
+    return button->read();
 }
 
-void DoloresButton::turnOff() {
-    relay->turnOff();
-}
-
-boolean DoloresButton::isTriggered() {
-    bool changed = button->update();
-    return (changed && button->read() == LOW);
-}
-
-boolean DoloresButton::isReleased() {
-    bool changed = button->update();
-    return (changed && button->read() == HIGH);
-}
-
-void DoloresButton::check() {
-    if (isTriggered()) {
+void DoloresButton::checkRelay() {
+    if (readButton() == LOW) {
         turnOn();
-    } else if (isReleased()) {
+    } else {
         turnOff();
     }
 }
 
+boolean DoloresButton::update() {
+    return button->update();
+}
+
+void DoloresButton::turnOn() {
+    state = HIGH;
+    relay->turnOn();
+}
+
+void DoloresButton::turnOff() {
+    state = LOW;
+    relay->turnOff();
+}
+
+void DoloresButton::turnRelayOn() {
+    relay->turnOn();
+}
+
+void DoloresButton::turnRelayOff() {
+    relay->turnOff();
+}
+
+void DoloresButton::check() {
+    boolean isChanged = update();
+    if (isChanged) {
+        checkRelay();
+    }
+}
+
 boolean DoloresButton::isOn() {
-    return relay->getState() == HIGH;
+    return state == HIGH;
 }

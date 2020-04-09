@@ -8,6 +8,7 @@
 class DoloresTurnButton : public DoloresButton {
   public:
     DoloresTurnButton (byte pin, byte relayPin) ;
+    void checkBlink();
     void check();
 };
 #endif

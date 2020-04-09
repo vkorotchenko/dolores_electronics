@@ -10,6 +10,7 @@ DoloresGPS::DoloresGPS(byte pin_TX, byte pin_RX) {
     this->pin_TX = pin_TX;
     this->pin_RX = pin_RX;
 
+
     gpsSerial = new NeoSWSerial(pin_TX, pin_RX);
 
     // initialize GPS
@@ -18,45 +19,49 @@ DoloresGPS::DoloresGPS(byte pin_TX, byte pin_RX) {
     gps.send_P( gpsSerial, F("PMTK220,1000") ); // 4Hz update
 }
 
+int DoloresGPS::getRunningDistance() {
+    return runningDistance;
+}
+
 int DoloresGPS::getGps() {
     int displaySpeed = 0;
+
     while (gps.available(*gpsSerial)) {
-    gps_fix fix = gps.read();
-
-    if (fix.latitude() < 49) {
-        DoloresDatabase::setMph();
-    } else if (fix.latitude() >= 49) {
-        DoloresDatabase::setKph();
-    }
-
-    if (fix.valid.speed) {
-        int speed;
-        if (DoloresDatabase::isMetric()) {
-            speed = (int)fix.speed_kph();
-        } else {
-            speed = (int)fix.speed_mph();
+        gps_fix fix = gps.read();
+        if (fix.latitude() < 49) {
+            DoloresDatabase::setMph();
+        } else if (fix.latitude() >= 49) {
+            DoloresDatabase::setKph();
         }
 
-        displaySpeed = speed;
-        if (speed < MIN_SPEED) {
-            displaySpeed = 0;
-        }
-    }
+        if (fix.valid.speed) {
+            int speed;
+            if (DoloresDatabase::isMetric()) {
+                speed = (int)fix.speed_kph();
+            } else {
+                speed = (int)fix.speed_mph();
+            }
 
-    // record distance if location available and traveling more than min speed
-    if (fix.valid.location && displaySpeed >= MIN_SPEED) {
-        if (firstLocationScan) {
-            firstLocationScan = false;
-            prev_location = fix.location;
-        } else {
-            float range = fix.location.DistanceKm (prev_location);
-            runningDistance = runningDistance + range;
-            if (runningDistance > RUNNING_DISTANCE_THRESHOLD) {
-                persistRange(range);
-                runningDistance = 0;
+            displaySpeed = speed;
+            if (speed < MIN_SPEED) {
+                displaySpeed = 0;
             }
         }
-    }
+
+        // record distance if location available and traveling more than min speed
+        if (fix.valid.location && displaySpeed >= MIN_SPEED) {
+            if (firstLocationScan) {
+                firstLocationScan = false;
+                prev_location = fix.location;
+            } else {
+                float range = fix.location.DistanceKm (prev_location);
+                runningDistance = runningDistance + range;
+                if (runningDistance > RUNNING_DISTANCE_THRESHOLD) {
+                    persistRange(runningDistance);
+                    runningDistance = 0;
+                }
+            }
+        }
     }
     return displaySpeed;
 }

@@ -9,14 +9,17 @@ class DoloresButton {
     byte pin;
     Bounce* button;
     DoloresRelay* relay;
-
+    byte state;
   public:
-    DoloresButton(byte pin, byte relayPin) ;
+    boolean update();
+    DoloresButton(byte pin, byte relayPin);
     void turnOn();
     void turnOff();
-    boolean isTriggered();
-    boolean isReleased();
+    void turnRelayOn();
+    void turnRelayOff();
     virtual void check();
-    boolean isOn() ;
+    boolean isOn();
+    void checkRelay();
+    byte readButton();
 };
 #endif

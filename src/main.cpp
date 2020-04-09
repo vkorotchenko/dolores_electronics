@@ -2,6 +2,9 @@
 #include <SPI.h>
 #include <Wire.h>
 
+// comment out TEST_VAL to upload prod
+// #define TEST_VAL 0
+
 //IMPORT MODULES
 #include <DoloresTimer.h>
 #include <DoloresDatabase.h>
@@ -14,6 +17,7 @@
 #include <DoloresDisplay.h>
 #include <DoloresFingerprint.h>
 #include <DoloresGPS.h>
+
 
 //DEFINE PINS
 #define FINGERPRINT_SLA 0
@@ -37,6 +41,10 @@
 #define LEFT_TURN_RELAY 5
 #define HEAD_LIGHT_RELAY 6
 #define STARTER_RELAY 7
+
+#define ONBOARD_LED 13
+
+#ifndef TEST_VAL
 
 //DEFINE OBJECTS
 DoloresTurnButton* buttonLeft;
@@ -101,5 +109,10 @@ void loop() {
   screen->setDisplay(isOil, isRunning, buttonLeft->isOn(), buttonRight->isOn(), displaySpeed);
 }
 
+// TESTED: TIMER, DATABASE, Button, turn, aux, oil, display (numeric), fingerprint, gps
+// TODO : display alpha, 
+// TIMER
+#elif TEST_VAL == 0
 
 
+#endif

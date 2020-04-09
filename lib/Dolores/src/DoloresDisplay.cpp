@@ -74,103 +74,119 @@ void DoloresDisplay::scrollAlphaNumericDisaplay(String input) {
 
 void DoloresDisplay::digitalDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed) {
     if (isOil) {
-    numeric4->setSegments(SEG_OIL);
+        numeric4->setSegments(SEG_OIL);
     } else {
-    if (isRunning) {
-        if (isLeftTurn || isRightTurn) {
-        if (DoloresTimer::isTimeForBlink()) {
-            if (isLeftTurn && isRightTurn) {
-            numeric4->setSegments(SEG_TURN_BOTH);
-            } else if (isLeftTurn) {
-            numeric4->setSegments(SEG_TURN_LEFT);
-            } else if (isRightTurn) {
-            numeric4->setSegments(SEG_TURN_RIGHT);
+        if (isRunning) {
+            if (isLeftTurn || isRightTurn) {
+                if (DoloresTimer::isTimeForBlink()) {
+                    if (isLeftTurn && isRightTurn) {
+                        numeric4->setSegments(SEG_TURN_BOTH);
+                    } else if (isLeftTurn) {
+                        numeric4->setSegments(SEG_TURN_LEFT);
+                    } else if (isRightTurn) {
+                        numeric4->setSegments(SEG_TURN_RIGHT);
+                    }
+                } else {
+                    numeric4->clear();
+                }
+            } else {
+            uint8_t kph[] = { 0x00, 0x00, 0x00, (DoloresDatabase::isMetric() ? (uint8_t)SEG_A : (uint8_t)SEG_D)};
+            numeric4->setSegments(kph);
+            numeric4->showNumberDec(displaySpeed, true, 3, 0);
             }
         } else {
-            numeric4->clear();
+            numeric4->setSegments(SEG_READY);
         }
-        } else {
-        uint8_t kph[] = { 0x00, 0x00, 0x00, (DoloresDatabase::isMetric() ? (uint8_t)SEG_A : (uint8_t)SEG_D)};
-        numeric4->setSegments(kph);
-        numeric4->showNumberDec(displaySpeed, true, 3, 0);
-        }
-    } else {
-        numeric4->setSegments(SEG_READY);
-    }
     }
 }
 
 void DoloresDisplay::alphaNumericDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed) {
     if (isOil) {
-    alpha4.writeDigitAscii(0, 'O');
-    alpha4.writeDigitAscii(1, 'I');
-    alpha4.writeDigitAscii(2, 'L');
-    alpha4.writeDigitAscii(3, ' ');
+        alpha4.writeDigitAscii(0, 'O');
+        alpha4.writeDigitAscii(1, 'I');
+        alpha4.writeDigitAscii(2, 'L');
+        alpha4.writeDigitAscii(3, ' ');
     } else {
-    if (isRunning) {
-        if (isLeftTurn || isRightTurn) {
-        if (DoloresTimer::isTimeForBlink()) {
-            if (isLeftTurn && isRightTurn) {
-            alpha4.writeDigitAscii(0, '<');
-            alpha4.writeDigitAscii(1, ' ');
-            alpha4.writeDigitAscii(2, ' ');
-            alpha4.writeDigitAscii(3, '>');
-            } else if (isLeftTurn) {
-            alpha4.writeDigitAscii(0, '<');
-            alpha4.writeDigitAscii(1, ' ');
-            alpha4.writeDigitAscii(2, ' ');
-            alpha4.writeDigitAscii(3, ' ');
-            } else if (isRightTurn) {
-            alpha4.writeDigitAscii(0, ' ');
-            alpha4.writeDigitAscii(1, ' ');
-            alpha4.writeDigitAscii(2, ' ');
-            alpha4.writeDigitAscii(3, '>');
+        if (isRunning) {
+            if (isLeftTurn || isRightTurn) {
+            if (DoloresTimer::isTimeForBlink()) {
+                if (isLeftTurn && isRightTurn) {
+                    alpha4.writeDigitAscii(0, '<');
+                    alpha4.writeDigitAscii(1, ' ');
+                    alpha4.writeDigitAscii(2, ' ');
+                    alpha4.writeDigitAscii(3, '>');
+                } else if (isLeftTurn) {
+                    alpha4.writeDigitAscii(0, '<');
+                    alpha4.writeDigitAscii(1, ' ');
+                    alpha4.writeDigitAscii(2, ' ');
+                    alpha4.writeDigitAscii(3, ' ');
+                } else if (isRightTurn) {
+                    alpha4.writeDigitAscii(0, ' ');
+                    alpha4.writeDigitAscii(1, ' ');
+                    alpha4.writeDigitAscii(2, ' ');
+                    alpha4.writeDigitAscii(3, '>');
+                }
+            } else {
+                alpha4.writeDigitAscii(0, ' ');
+                alpha4.writeDigitAscii(1, ' ');
+                alpha4.writeDigitAscii(2, ' ');
+                alpha4.writeDigitAscii(3, ' ');
+
+            }
+            } else {
+                char buf [4];
+                sprintf (buf, "%03i", displaySpeed);
+                alpha4.writeDigitAscii(0, buf[0]);
+                alpha4.writeDigitAscii(1, buf[1]);
+                alpha4.writeDigitAscii(2, buf[2]);
+                alpha4.writeDigitAscii(3, DoloresDatabase::isMetric() ? 'K' : 'M');
             }
         } else {
-            alpha4.writeDigitAscii(0, ' ');
-            alpha4.writeDigitAscii(1, ' ');
-            alpha4.writeDigitAscii(2, ' ');
-            alpha4.writeDigitAscii(3, ' ');
-
+            alpha4.writeDigitAscii(0, '<');
+            alpha4.writeDigitAscii(1, '{');
+            alpha4.writeDigitAscii(2, '}');
+            alpha4.writeDigitAscii(3, '>');
         }
-        } else {
-        char buf [4];
-        sprintf (buf, "%03i", displaySpeed);
-        alpha4.writeDigitAscii(0, buf[0]);
-        alpha4.writeDigitAscii(1, buf[1]);
-        alpha4.writeDigitAscii(2, buf[2]);
-        alpha4.writeDigitAscii(3, DoloresDatabase::isMetric() ? 'K' : 'M');
-        }
-    } else {
-        alpha4.writeDigitAscii(0, '<');
-        alpha4.writeDigitAscii(1, '{');
-        alpha4.writeDigitAscii(2, '}');
-        alpha4.writeDigitAscii(3, '>');
-    }
     }
     alpha4.writeDisplay();
 }
 
 void DoloresDisplay::displayOdometerDigital (float input) {
-    int odometer = (int) input;
 
-    int digits = ((int) pow(odometer , 0.1)) + 1;
-    for (int i = 0; i < digits ; i++) {
-    int display_value = getDisplayValue(digits, i, odometer);
-    numeric4->showNumberDec(display_value, i > 3, 3, 0);
-    delay(SCROLL_SPEED);
+    numeric4->clear();
+    uint8_t kph[] = { 0x00, 0x00, 0x00, (DoloresDatabase::isMetric() ? (uint8_t)SEG_A : (uint8_t)SEG_D)};
+    numeric4->setSegments(kph);
+
+    long odometer = (long) input;
+    int digits = ((int) pow(input , 0.1)) + 1;
+
+    for (int i = 0; i < digits + 3; i++) {
+        if(i<digits) {
+            int display_value = getDisplayValue(digits, i, odometer);
+            numeric4->showNumberDec(display_value, i > 3, 3, 0);
+        } else {
+            int display_value = getDisplayValue(digits, i, odometer);
+            numeric4->showNumberDec(display_value, false ,2 - (i-digits) , 0);
+        }
+        delay(SCROLL_SPEED*4);
     }
 }
 
-int DoloresDisplay::getDisplayValue(int digits, int offset , int reading) {
-    int x0 = extractDigit(reading, digits - offset);
-    int x1 = extractDigit(reading, digits - offset + 1);
-    int x2 = extractDigit(reading, digits - offset + 2);
+int DoloresDisplay::getDisplayValue(int digits, int offset , long reading) {
+        int x0 = extractDigit(reading, digits - offset); // ones
+        int x1 = extractDigit(reading, digits - offset + 1); //tens
+        int x2 = extractDigit(reading, digits - offset + 2); //hundreds
+    if ( digits - offset == -1) { // one digit
+        return x2;
+    } else if (digits - offset == 0) { // 2 digits
+        return  (x2 * 10) + x1;
+    } else { // 3 digits
 
-    return  (x2 * 100) + (x1 * 10) + x0;
+        return  (x2 * 100) + (x1 * 10) + x0;
+    }
 }
 
-int DoloresDisplay::extractDigit(int v, int p) {
+int DoloresDisplay::extractDigit(long v, int p) {
     return int(v / (pow(10, p - 1))) - int(v / (pow(10, p))) * 10;
 }
 
@@ -190,21 +206,22 @@ DoloresDisplay::DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL, boolean isAlp
     this->alpha4 = Adafruit_AlphaNum4();
     this->numeric4 = new TM1637Display(pin_CLK_SDA, pin_DIO_SCL);
     alpha4.begin(0x70);
+    delay(500);
 }
 
 void DoloresDisplay::scrollText(String value) {
     if (isAlphanumeric) {
-    scrollAlphaNumericDisaplay(value);
+        scrollAlphaNumericDisaplay(value);
     } else {
-    delay(2000);
+        delay(2000);
     }
 }
 
 void DoloresDisplay::scrollOdometer(float odometer) {
     if (isAlphanumeric) {
-    displayOdometerAlphanumeric(odometer);
+        displayOdometerAlphanumeric(odometer);
     } else {
-    displayOdometerDigital(odometer);
+        displayOdometerDigital(odometer);
     }
 }
 

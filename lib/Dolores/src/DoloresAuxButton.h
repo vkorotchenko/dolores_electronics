@@ -13,6 +13,6 @@ class DoloresAuxButton : public DoloresButton {
   public:
     DoloresAuxButton (byte pin, byte relayPin, byte relayPinAlt);
     void check(bool useAlt);
-    boolean isAltOn();
+    void checkRelay(bool useAlt);
 };
 #endif

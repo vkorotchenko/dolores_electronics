@@ -14,18 +14,25 @@ DoloresAuxButton::DoloresAuxButton (byte pin, byte relayPin, byte relayPinAlt) :
 }
 
 void DoloresAuxButton::check(bool useAlt) {
-    if (isTriggered()) {
-        if (useAlt) {
-            turnAltOn();
-        } else {
-            turnOn();
-        }
-    } else if (isReleased()) {
-        turnOff();
-        turnAltOff();
+    boolean isChanged = update();
+    if (isChanged) {
+        checkRelay(useAlt);
     }
 }
 
-boolean DoloresAuxButton::isAltOn() {
-    return relayAlt->getState() == HIGH;
+void DoloresAuxButton::checkRelay(bool useAlt) {
+        if (readButton() == LOW) {
+            turnOn();
+            if(useAlt) {
+                turnAltOn();
+                turnRelayOff();
+            } else {
+                turnRelayOn();
+                turnAltOff();
+            }
+        } else {
+            turnOff();
+            turnAltOff();
+        }
+    
 }

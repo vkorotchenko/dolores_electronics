@@ -22,8 +22,8 @@ class DoloresDisplay {
     void digitalDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed);
     void alphaNumericDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed);
     void displayOdometerDigital (float input);
-    int getDisplayValue(int digits, int offset , int reading);
-    int extractDigit(int v, int p) ;
+    int getDisplayValue(int digits, int offset , long reading);
+    int extractDigit(long v, int p) ;
   public:
     DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL, boolean isAlphanumeric);
     DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL);

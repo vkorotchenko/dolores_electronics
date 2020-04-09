@@ -55,6 +55,4 @@ void loop() {
   Serial.println("SCROLL TEXT");
   screen->scrollText("WELCOME");
   delay(2000);
-
-
 }

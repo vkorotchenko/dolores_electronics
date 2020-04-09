@@ -3,14 +3,21 @@
 DoloresTurnButton::DoloresTurnButton (byte pin, byte relayPin) : DoloresButton(pin, relayPin) {
 }
 
+
 void DoloresTurnButton::check() {
-    if (isTriggered()) {
-    if (DoloresTimer::isTimeForBlink()) {
-        turnOn();
-    } else {
-        turnOff();
+    boolean isChanged = update();
+    if (isChanged) {
+        checkRelay();
     }
-    } else if (isReleased()) {
-    turnOff();
+    checkBlink();
+}
+
+void DoloresTurnButton::checkBlink() {
+    if (readButton() == LOW) {
+        if (DoloresTimer::isTimeForBlink()) {
+            turnRelayOn();
+        } else {
+            turnRelayOff();
+        }
     }
 }

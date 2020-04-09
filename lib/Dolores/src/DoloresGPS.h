@@ -20,5 +20,6 @@ class DoloresGPS {
   public:
     DoloresGPS(byte pin_TX, byte pin_RX);
     int getGps();
+    int getRunningDistance();
 };
 #endif

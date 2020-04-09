@@ -11,5 +11,5 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("IS OIL TRIGGERED: " + oil->isTriggered());
+  Serial.println("IS OIL TRIGGERED: " + (String)oil->isTriggered());
 }

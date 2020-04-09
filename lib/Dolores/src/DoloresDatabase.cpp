@@ -11,26 +11,27 @@ void DoloresDatabase::checkEEPROM() {
     int check_value;
     EEPROM.get(EE_CHECK_ADDRESS, check_value);
 
-    if ( check_value == 0xFF || check_value == 0) {
-    EEPROM.put(EE_ODOMETER_ADDRESS, INIT_ODOMETER_READING_KM);
-    EEPROM.put(EE_METRIC_ADDRESS, true);
-    EEPROM.put(EE_CHECK_ADDRESS, 1);
+    if ( check_value == 0xFF || check_value == 1) {
+        EEPROM.put(EE_ODOMETER_ADDRESS, INIT_ODOMETER_READING_KM);
+        EEPROM.put(EE_METRIC_ADDRESS, true);
+        EEPROM.put(EE_CHECK_ADDRESS, 2);
     }
 }
 
 void DoloresDatabase::setKph() {
-    EEPROM.update(EE_METRIC_ADDRESS, true);
+    EEPROM.put(EE_METRIC_ADDRESS, true);
 }
 
 void DoloresDatabase::setMph() {
-    EEPROM.update(EE_METRIC_ADDRESS, false);
+    EEPROM.put(EE_METRIC_ADDRESS, false);
 }
 
 boolean DoloresDatabase::isMetric() {
     DoloresDatabase::checkEEPROM();
     boolean isMetric;
     EEPROM.get(EE_METRIC_ADDRESS, isMetric);
-    return isMetric;
+
+    return (isMetric == 1);
 }
 
 float DoloresDatabase::getOdometer() {
@@ -39,7 +40,7 @@ float DoloresDatabase::getOdometer() {
     EEPROM.get(EE_ODOMETER_ADDRESS, odometer);
 
     if (!isMetric()) {
-    odometer = odometer / 1.609;
+        odometer = odometer / 1.609;
     }
 
     return odometer;
@@ -48,5 +49,5 @@ float DoloresDatabase::getOdometer() {
 
 void DoloresDatabase::updateOdometer(float odometer) {
     DoloresDatabase::checkEEPROM();
-    EEPROM.update(EE_ODOMETER_ADDRESS, odometer);
+    EEPROM.put(EE_ODOMETER_ADDRESS, odometer);
 }

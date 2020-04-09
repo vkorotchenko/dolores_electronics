@@ -2,16 +2,19 @@
 #include <Arduino.h>
 #include "DoloresTimer.h"
 
-#define LED_PIN 13
+#define ONBOARD_LED 13
 
 void setup() {
-  pinMode(LED_PIN, OUTPUT);
+  pinMode(ONBOARD_LED, OUTPUT);
+  Serial.begin(9600);
 }
 
 void loop() {
-    if(DoloresTimer::isTimeForBlink()) {
-        digitalWrite(LED_PIN, HIGH);
-    } else {
-        digitalWrite(LED_PIN, HIGH);
-    }
+  if(DoloresTimer::isTimeForBlink()) {
+      digitalWrite(ONBOARD_LED, HIGH);
+      Serial.println("ON");
+  } else {
+      digitalWrite(ONBOARD_LED, LOW);
+      Serial.println("OFF");
+  }
 }
