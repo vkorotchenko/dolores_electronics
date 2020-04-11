@@ -4,7 +4,7 @@
 
 
 // comment out TEST_VAL to upload prod
-// #define TEST_VAL 0
+// #define TESTING 1
 
 //IMPORT MODULES
 #include <DoloresTimer.h>
@@ -37,15 +37,13 @@
 #define VOLT_SENSOR A3
 
 #define FINGERPRINT_RELAY 13
-#define HORN_RELAY 8
+#define HORN_RELAY 7
 #define RIGHT_TURN_RELAY 4
 #define LEFT_TURN_RELAY 5
 #define HEAD_LIGHT_RELAY 6
-#define STARTER_RELAY 7
+#define STARTER_RELAY 8
 
-#define ONBOARD_LED 13
-
-#ifndef TEST_VAL
+#ifndef TESTING
 
 //DEFINE OBJECTS
 DoloresTurnButton* buttonLeft;
@@ -112,5 +110,5 @@ void loop() {
 
 // TESTED: TIMER, DATABASE, Button, turn, aux, oil, display (numeric), fingerprint, gps. display alpha
 // TIMER
-#elif TEST_VAL == 0
+#elif TESTING == 1
 #endif

@@ -13,14 +13,14 @@ DoloresVoltage::DoloresVoltage(byte pin) {
 
 bool DoloresVoltage::isTriggered() {
     if ( getCurrentVoltage() > THRESHOLD + initialValue) {
-    if (millisWhenStarted == 0) {
-        millisWhenStarted = millis();
-        return false;
-    } else if (millisWhenStarted < millis() - TIME_SINCE_STARTED_THRESHOLD) {
-        return false;
-    } else {
-        return true;
-    }
+        if (millisWhenStarted == 0) {
+            millisWhenStarted = millis();
+            return false;
+        } else if (millisWhenStarted < millis() - TIME_SINCE_STARTED_THRESHOLD) {
+            return false;
+        } else {
+            return true;
+        }
     }
     millisWhenStarted = 0;
     return false;
