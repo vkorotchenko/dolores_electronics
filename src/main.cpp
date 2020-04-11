@@ -2,6 +2,7 @@
 #include <SPI.h>
 #include <Wire.h>
 
+
 // comment out TEST_VAL to upload prod
 // #define TEST_VAL 0
 
@@ -109,10 +110,7 @@ void loop() {
   screen->setDisplay(isOil, isRunning, buttonLeft->isOn(), buttonRight->isOn(), displaySpeed);
 }
 
-// TESTED: TIMER, DATABASE, Button, turn, aux, oil, display (numeric), fingerprint, gps
-// TODO : display alpha, 
+// TESTED: TIMER, DATABASE, Button, turn, aux, oil, display (numeric), fingerprint, gps. display alpha
 // TIMER
 #elif TEST_VAL == 0
-
-
 #endif

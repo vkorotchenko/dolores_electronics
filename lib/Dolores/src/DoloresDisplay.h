@@ -17,6 +17,7 @@ class DoloresDisplay {
     Adafruit_AlphaNum4 alpha4;
     TM1637Display* numeric4;
 
+
     void displayOdometerAlphanumeric(float input);
     void scrollAlphaNumericDisaplay(String input);
     void digitalDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed);
@@ -24,6 +25,7 @@ class DoloresDisplay {
     void displayOdometerDigital (float input);
     int getDisplayValue(int digits, int offset , long reading);
     int extractDigit(long v, int p) ;
+    void displayAlphaChars(char a, char b, char c, char d);
   public:
     DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL, boolean isAlphanumeric);
     DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL);

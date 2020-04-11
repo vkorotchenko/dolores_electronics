@@ -102,53 +102,38 @@ void DoloresDisplay::digitalDisplay(boolean isOil, boolean isRunning, boolean is
 
 void DoloresDisplay::alphaNumericDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed) {
     if (isOil) {
-        alpha4.writeDigitAscii(0, 'O');
-        alpha4.writeDigitAscii(1, 'I');
-        alpha4.writeDigitAscii(2, 'L');
-        alpha4.writeDigitAscii(3, ' ');
+        displayAlphaChars('O', 'I', 'L', ' ');
     } else {
         if (isRunning) {
             if (isLeftTurn || isRightTurn) {
-            if (DoloresTimer::isTimeForBlink()) {
-                if (isLeftTurn && isRightTurn) {
-                    alpha4.writeDigitAscii(0, '<');
-                    alpha4.writeDigitAscii(1, ' ');
-                    alpha4.writeDigitAscii(2, ' ');
-                    alpha4.writeDigitAscii(3, '>');
-                } else if (isLeftTurn) {
-                    alpha4.writeDigitAscii(0, '<');
-                    alpha4.writeDigitAscii(1, ' ');
-                    alpha4.writeDigitAscii(2, ' ');
-                    alpha4.writeDigitAscii(3, ' ');
-                } else if (isRightTurn) {
-                    alpha4.writeDigitAscii(0, ' ');
-                    alpha4.writeDigitAscii(1, ' ');
-                    alpha4.writeDigitAscii(2, ' ');
-                    alpha4.writeDigitAscii(3, '>');
+                if (DoloresTimer::isTimeForBlink()) {
+                    if (isLeftTurn && isRightTurn) {
+                        displayAlphaChars('<', ' ', ' ', '>');
+                    } else if (isLeftTurn) {
+                        displayAlphaChars('<', ' ', ' ', ' ');
+                    } else if (isRightTurn) {
+                        displayAlphaChars(' ', ' ', ' ', '>');
+                    }
+                } else {
+                    displayAlphaChars(' ', ' ', ' ', ' ');
                 }
-            } else {
-                alpha4.writeDigitAscii(0, ' ');
-                alpha4.writeDigitAscii(1, ' ');
-                alpha4.writeDigitAscii(2, ' ');
-                alpha4.writeDigitAscii(3, ' ');
-
-            }
             } else {
                 char buf [4];
                 sprintf (buf, "%03i", displaySpeed);
-                alpha4.writeDigitAscii(0, buf[0]);
-                alpha4.writeDigitAscii(1, buf[1]);
-                alpha4.writeDigitAscii(2, buf[2]);
-                alpha4.writeDigitAscii(3, DoloresDatabase::isMetric() ? 'K' : 'M');
+                displayAlphaChars(buf[0], buf[1], buf[2], DoloresDatabase::isMetric() ? 'K' : 'M');
             }
         } else {
-            alpha4.writeDigitAscii(0, '<');
-            alpha4.writeDigitAscii(1, '{');
-            alpha4.writeDigitAscii(2, '}');
-            alpha4.writeDigitAscii(3, '>');
+            displayAlphaChars('<', '{', '}', '>');
         }
     }
     alpha4.writeDisplay();
+}
+
+void DoloresDisplay::displayAlphaChars(char a, char b, char c, char d) {
+    alpha4.writeDigitAscii(0, a);
+    alpha4.writeDigitAscii(1, b);
+    alpha4.writeDigitAscii(2, c);
+    alpha4.writeDigitAscii(3, d);
 }
 
 void DoloresDisplay::displayOdometerDigital (float input) {

@@ -50,14 +50,17 @@ int DoloresGPS::getGps() {
 
         // record distance if location available and traveling more than min speed
         if (fix.valid.location && displaySpeed >= MIN_SPEED) {
+
             if (firstLocationScan) {
                 firstLocationScan = false;
                 prev_location = fix.location;
             } else {
                 float range = fix.location.DistanceKm (prev_location);
+                Serial.println("RANGE: " + (String)range);
                 runningDistance = runningDistance + range;
+                Serial.println("RD: " + (String)runningDistance);
                 if (runningDistance > RUNNING_DISTANCE_THRESHOLD) {
-                    persistRange(runningDistance);
+                    // persistRange(runningDistance);
                     runningDistance = 0;
                 }
             }
