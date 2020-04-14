@@ -4,11 +4,13 @@
 class DoloresRelay {
   private:
     byte pin;
+    byte logic;
+    byte getState();
   public:
     DoloresRelay(byte pin);
+    DoloresRelay(byte pin, byte logic);
     void turnOn();
     void turnOff();
     void toggle();
-    byte getState();
 };
 #endif

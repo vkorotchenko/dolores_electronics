@@ -2,7 +2,7 @@
 #include <DoloresAuxButton.h>
 #include <DoloresTimer.h>
 
-#
+
 #define LED_PIN 13
 #define LED_PIN2 12
 #define BUTTON 11
@@ -10,7 +10,7 @@
 DoloresAuxButton* button;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   button = new DoloresAuxButton(BUTTON, LED_PIN, LED_PIN2);
 }
 

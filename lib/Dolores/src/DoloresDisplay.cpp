@@ -38,6 +38,13 @@ const uint8_t SEG_READY[4] = {
     SEG_G
 };
 
+const uint8_t SEG_LOW_VOLT[4] = {
+    SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,          // V
+    SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,  // O
+    SEG_E | SEG_F | SEG_D,                          // L
+    SEG_A | SEG_E | SEG_F,                          // T
+};
+
 void DoloresDisplay::displayOdometerAlphanumeric(float input) {
     String result = String(input, DEC);
     int loc = result.indexOf('.');
@@ -72,27 +79,31 @@ void DoloresDisplay::scrollAlphaNumericDisaplay(String input) {
     delay(SCROLL_SPEED);
 }
 
-void DoloresDisplay::digitalDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed) {
+void DoloresDisplay::digitalDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed, boolean isLowVolt) {
     if (isOil) {
         numeric4->setSegments(SEG_OIL);
     } else {
         if (isRunning) {
-            if (isLeftTurn || isRightTurn) {
-                if (DoloresTimer::isTimeForBlink()) {
-                    if (isLeftTurn && isRightTurn) {
-                        numeric4->setSegments(SEG_TURN_BOTH);
-                    } else if (isLeftTurn) {
-                        numeric4->setSegments(SEG_TURN_LEFT);
-                    } else if (isRightTurn) {
-                        numeric4->setSegments(SEG_TURN_RIGHT);
+            if (isLowVolt && !DoloresTimer::isTimeForBlink()) {
+                numeric4->setSegments(SEG_LOW_VOLT);
+            } else {
+                if (isLeftTurn || isRightTurn) {
+                    if (DoloresTimer::isTimeForBlink()) {
+                        if (isLeftTurn && isRightTurn) {
+                            numeric4->setSegments(SEG_TURN_BOTH);
+                        } else if (isLeftTurn) {
+                            numeric4->setSegments(SEG_TURN_LEFT);
+                        } else if (isRightTurn) {
+                            numeric4->setSegments(SEG_TURN_RIGHT);
+                        }
+                    } else {
+                        numeric4->clear();
                     }
                 } else {
-                    numeric4->clear();
+                    uint8_t kph[] = { 0x00, 0x00, 0x00, (DoloresDatabase::isMetric() ? (uint8_t)SEG_A : (uint8_t)SEG_D)};
+                    numeric4->setSegments(kph);
+                    numeric4->showNumberDec(displaySpeed, true, 3, 0);
                 }
-            } else {
-            uint8_t kph[] = { 0x00, 0x00, 0x00, (DoloresDatabase::isMetric() ? (uint8_t)SEG_A : (uint8_t)SEG_D)};
-            numeric4->setSegments(kph);
-            numeric4->showNumberDec(displaySpeed, true, 3, 0);
             }
         } else {
             numeric4->setSegments(SEG_READY);
@@ -100,27 +111,31 @@ void DoloresDisplay::digitalDisplay(boolean isOil, boolean isRunning, boolean is
     }
 }
 
-void DoloresDisplay::alphaNumericDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed) {
+void DoloresDisplay::alphaNumericDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed, boolean isLowVolt) {
     if (isOil) {
         displayAlphaChars('O', 'I', 'L', ' ');
     } else {
         if (isRunning) {
-            if (isLeftTurn || isRightTurn) {
-                if (DoloresTimer::isTimeForBlink()) {
-                    if (isLeftTurn && isRightTurn) {
-                        displayAlphaChars('<', ' ', ' ', '>');
-                    } else if (isLeftTurn) {
-                        displayAlphaChars('<', ' ', ' ', ' ');
-                    } else if (isRightTurn) {
-                        displayAlphaChars(' ', ' ', ' ', '>');
+            if(isLowVolt && !DoloresTimer::isTimeForBlink()) {
+                displayAlphaChars('V', 'O', 'L', 'T');
+            } else {
+                if (isLeftTurn || isRightTurn) {
+                    if (DoloresTimer::isTimeForBlink()) {
+                        if (isLeftTurn && isRightTurn) {
+                            displayAlphaChars('<', ' ', ' ', '>');
+                        } else if (isLeftTurn) {
+                            displayAlphaChars('<', ' ', ' ', ' ');
+                        } else if (isRightTurn) {
+                            displayAlphaChars(' ', ' ', ' ', '>');
+                        }
+                    } else {
+                        displayAlphaChars(' ', ' ', ' ', ' ');
                     }
                 } else {
-                    displayAlphaChars(' ', ' ', ' ', ' ');
+                    char buf [4];
+                    sprintf (buf, "%03i", displaySpeed);
+                    displayAlphaChars(buf[0], buf[1], buf[2], DoloresDatabase::isMetric() ? 'K' : 'M');
                 }
-            } else {
-                char buf [4];
-                sprintf (buf, "%03i", displaySpeed);
-                displayAlphaChars(buf[0], buf[1], buf[2], DoloresDatabase::isMetric() ? 'K' : 'M');
             }
         } else {
             displayAlphaChars('<', '{', '}', '>');
@@ -210,10 +225,10 @@ void DoloresDisplay::scrollOdometer(float odometer) {
     }
 }
 
-void DoloresDisplay::setDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed) {
+void DoloresDisplay::setDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed, boolean isLowVolt) {
     if (isAlphanumeric) {
-        alphaNumericDisplay(isOil, isRunning, isLeftTurn, isRightTurn, displaySpeed);
+        alphaNumericDisplay(isOil, isRunning, isLeftTurn, isRightTurn, displaySpeed, isLowVolt);
     } else {
-        digitalDisplay(isOil, isRunning, isLeftTurn, isRightTurn, displaySpeed);
+        digitalDisplay(isOil, isRunning, isLeftTurn, isRightTurn, displaySpeed, isLowVolt);
     }
 }

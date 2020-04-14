@@ -21,5 +21,6 @@ class DoloresButton {
     boolean isOn();
     void checkRelay();
     byte readButton();
+    void setRelayState( byte state);
 };
 #endif

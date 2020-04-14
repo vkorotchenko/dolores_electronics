@@ -5,11 +5,13 @@
 class DoloresVoltage {
   private:
     byte pin;
-    int initialValue;
+    float initialValue;
     unsigned long millisWhenStarted = 0;
+    boolean isRunning;
   public:
     DoloresVoltage(byte pin) ;
     bool isTriggered();
-    int getCurrentVoltage();
+    float getCurrentVoltage();
+    boolean isLowVoltage();
 };
 #endif

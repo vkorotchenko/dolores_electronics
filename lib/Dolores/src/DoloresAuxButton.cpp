@@ -9,8 +9,8 @@ void DoloresAuxButton::turnAltOff() {
 }
 
 DoloresAuxButton::DoloresAuxButton (byte pin, byte relayPin, byte relayPinAlt) : DoloresButton(pin, relayPin){
-
     this->relayAlt = new DoloresRelay(relayPinAlt);
+    checkRelay(false);
 }
 
 void DoloresAuxButton::check(bool useAlt) {
@@ -22,15 +22,16 @@ void DoloresAuxButton::check(bool useAlt) {
 
 void DoloresAuxButton::checkRelay(bool useAlt) {
         if (readButton() == LOW) {
-            turnOn();
+            setRelayState(HIGH);
             if(useAlt) {
                 turnAltOn();
                 turnRelayOff();
             } else {
-                turnRelayOn();
                 turnAltOff();
+                turnOn();
             }
         } else {
+            setRelayState(LOW);
             turnOff();
             turnAltOff();
         }

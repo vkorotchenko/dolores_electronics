@@ -20,8 +20,8 @@ class DoloresDisplay {
 
     void displayOdometerAlphanumeric(float input);
     void scrollAlphaNumericDisaplay(String input);
-    void digitalDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed);
-    void alphaNumericDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed);
+    void digitalDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed, boolean isLowVolt);
+    void alphaNumericDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed, boolean isLowVolt);
     void displayOdometerDigital (float input);
     int getDisplayValue(int digits, int offset , long reading);
     int extractDigit(long v, int p) ;
@@ -31,6 +31,6 @@ class DoloresDisplay {
     DoloresDisplay(byte pin_CLK_SDA, byte pin_DIO_SCL);
     void scrollText(String value);
     void scrollOdometer(float odometer);
-    void setDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed);
+    void setDisplay(boolean isOil, boolean isRunning, boolean isLeftTurn, boolean isRightTurn, int displaySpeed, boolean isLowVolt);
 };
 #endif

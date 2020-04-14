@@ -3,8 +3,6 @@
 #include <Wire.h>
 
 
-// comment out TEST_VAL to upload prod
-// #define TESTING 1
 
 //IMPORT MODULES
 #include <DoloresTimer.h>
@@ -28,10 +26,10 @@
 #define GPS_TX 2
 #define GPS_RX 3
 
-#define RIGHT_TURN_IN 10
+#define RIGHT_TURN_IN 12
 #define LEFT_TURN_IN 11
-#define HEAD_LIGHT_IN 12
-#define AUX_IN 9
+#define HEAD_LIGHT_IN 9
+#define AUX_IN 10
 
 #define OIL_SENSOR A0
 #define VOLT_SENSOR A3
@@ -43,6 +41,8 @@
 #define HEAD_LIGHT_RELAY 6
 #define STARTER_RELAY 8
 
+// comment out TEST_VAL to upload prod
+// #define TESTING 1
 #ifndef TESTING
 
 //DEFINE OBJECTS
@@ -97,6 +97,7 @@ void loop() {
 
   // CHECK RUNNING
   boolean isRunning = volt->isTriggered();
+  boolean isLowVolt = volt->isLowVoltage();
 
   // CHECK INPUTS
   buttonLeft->check();
@@ -105,10 +106,26 @@ void loop() {
   buttonAux->check(isRunning);
 
   // DISPLAY TO SCREEN
-  screen->setDisplay(isOil, isRunning, buttonLeft->isOn(), buttonRight->isOn(), displaySpeed);
+  screen->setDisplay(isOil, isRunning, buttonLeft->isOn(), buttonRight->isOn(), displaySpeed, isLowVolt);
 }
 
 // TESTED: TIMER, DATABASE, Button, turn, aux, oil, display (numeric), fingerprint, gps. display alpha
 // TIMER
 #elif TESTING == 1
+
+#define LED_PIN 13
+#define LED_PIN2 12
+#define BUTTON 11
+
+DoloresAuxButton* button;
+
+void setup() {
+  Serial.begin(115200);
+  button = new DoloresAuxButton(BUTTON, LED_PIN, LED_PIN2);
+}
+
+void loop() {
+  button->check(DoloresTimer::isTimeForBlink());
+}
+
 #endif

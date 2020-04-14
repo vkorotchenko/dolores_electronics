@@ -7,7 +7,7 @@
 DoloresButton* button;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   button = new DoloresButton(BUTTON, LED_PIN);
 }
 

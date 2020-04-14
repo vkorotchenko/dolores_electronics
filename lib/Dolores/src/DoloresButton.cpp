@@ -30,13 +30,17 @@ boolean DoloresButton::update() {
     return button->update();
 }
 
+void DoloresButton::setRelayState( byte state) { 
+    state = state;
+}
+
 void DoloresButton::turnOn() {
-    state = HIGH;
+    setRelayState(HIGH);
     relay->turnOn();
 }
 
 void DoloresButton::turnOff() {
-    state = LOW;
+    setRelayState(LOW);
     relay->turnOff();
 }
 

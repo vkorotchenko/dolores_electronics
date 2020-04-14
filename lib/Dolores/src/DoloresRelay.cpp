@@ -2,15 +2,32 @@
 
 DoloresRelay::DoloresRelay(byte pin) {
     this->pin = pin;
+    this->logic = HIGH;
     pinMode(pin, OUTPUT);
+    turnOff();
+}
+DoloresRelay::DoloresRelay(byte pin, byte logic) {
+    this->pin = pin;
+    this->logic = logic;
+    pinMode(pin, OUTPUT);
+    turnOff();
 }
 
 void DoloresRelay::turnOn() {
-    digitalWrite(pin, HIGH);
+    if( logic == HIGH) {
+        digitalWrite(pin, LOW);
+    } else {
+        digitalWrite(pin, HIGH);
+    }
 }
 
 void DoloresRelay::turnOff() {
-    digitalWrite(pin, LOW);
+    if( logic == HIGH) {
+        digitalWrite(pin, HIGH);
+    } else {
+        digitalWrite(pin, LOW);
+    }
+
 }
 
 void DoloresRelay::toggle() {
