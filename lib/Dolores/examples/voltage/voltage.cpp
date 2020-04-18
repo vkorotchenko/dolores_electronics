@@ -2,6 +2,7 @@
 #include <DoloresVoltage.h>
 
 #define VOLT_SENSOR A3
+#define ONBOARD_LED 13
 
 DoloresVoltage* volt;
 
@@ -11,6 +12,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("CURRENT VOLTAGE: " + volt->getCurrentVoltage());
-  Serial.println("IS TRIGGERED: " + volt->isTriggered());
+  if(volt->isTriggered()) {
+    digitalWrite(ONBOARD_LED, HIGH);
+  }
 }

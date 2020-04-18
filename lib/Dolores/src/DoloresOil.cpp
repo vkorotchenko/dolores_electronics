@@ -5,5 +5,5 @@ DoloresOil::DoloresOil(byte pin) {
 }
 
 bool DoloresOil::isTriggered() {
-    return (digitalRead(pin) == LOW);
+    return (digitalRead(pin) == HIGH);
 }

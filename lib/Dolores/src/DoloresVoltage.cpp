@@ -16,9 +16,12 @@ DoloresVoltage::DoloresVoltage(byte pin) {
 }
 
 bool DoloresVoltage::isTriggered() {
+    Serial.println("THIS IS INIT:" + (String)initialValue);
     if (isRunning == true) {
         return isRunning;
     }
+
+    Serial.println("THIS IS CURRENT:" + (String)getCurrentVoltage());
     if ( getCurrentVoltage() > (THRESHOLD + initialValue)) {
         if (millisWhenStarted == 0) {
             millisWhenStarted = millis();
@@ -28,8 +31,9 @@ bool DoloresVoltage::isTriggered() {
         } else {
             isRunning = true;
         }
+    } else {
+        millisWhenStarted = 0;
     }
-    millisWhenStarted = 0;
     return isRunning;
 }
 

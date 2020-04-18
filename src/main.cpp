@@ -42,7 +42,7 @@
 #define STARTER_RELAY 8
 
 // comment out TEST_VAL to upload prod
-// #define TESTING 1
+#define TESTING 1
 #ifndef TESTING
 
 //DEFINE OBJECTS
@@ -113,19 +113,30 @@ void loop() {
 // TIMER
 #elif TESTING == 1
 
-#define LED_PIN 13
-#define LED_PIN2 12
-#define BUTTON 11
+#define VOLT_SENSOR A3
+#define ONBOARD_LED 13
 
-DoloresAuxButton* button;
+DoloresVoltage* volt;
 
 void setup() {
+  pinMode(ONBOARD_LED, OUTPUT);
   Serial.begin(115200);
-  button = new DoloresAuxButton(BUTTON, LED_PIN, LED_PIN2);
+  volt = new DoloresVoltage(VOLT_SENSOR);
 }
 
 void loop() {
-  button->check(DoloresTimer::isTimeForBlink());
+  if(volt->isTriggered()) {
+    digitalWrite(ONBOARD_LED, HIGH);
+    Serial.println("ONNNNN");
+  } 
+  if (volt->isLowVoltage()) {
+    digitalWrite(ONBOARD_LED, LOW);
+    Serial.println("LOW VOLT");
+
+  }
+
+
+  delay(2000);
 }
 
 #endif
